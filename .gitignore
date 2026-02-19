@@ -1,6 +1,7 @@
 server/example-pdfs/
 server/uploads/
 server/generated-pdfs/
+server/pdf-templates/
 server/test*
 node_modules/
 server/node_modules/

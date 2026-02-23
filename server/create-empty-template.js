@@ -9,7 +9,7 @@ async function createEmptyTemplateFromRenderer() {
   const buffer = await generateApplicationPdfBuffer(emptyRecord, {
     companyName: 'No Limit Capital',
     margin: 24,
-    logoPath: path.join(__dirname, '..', 'assets', 'images', 'logo.svg'),
+    logoPath: path.join(__dirname, '..', 'assets', 'images', 'logo.png'),
     headerScale: 0.75,
     emptyFields: true,
   });

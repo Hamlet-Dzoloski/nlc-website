@@ -123,14 +123,10 @@ function buildFieldMappings(record) {
     business_trade_reference_3_contact_person: record.business_trade_reference_3_contact_person,
     business_trade_reference_3_phone: record.business_trade_reference_3_phone,
 
-    owner1_print_name: owner1Name,
     signature: record.signature,
     application_date: formatDate(record.application_date),
-    owner2_print_name: owner2Name,
     signature_additional: record.signature_additional,
     application_date_additional: formatDate(record.application_date_additional),
-    business_tax_id_confirm: record.business_tax_id,
-    business_website_confirm: record.business_website,
   };
 }
 

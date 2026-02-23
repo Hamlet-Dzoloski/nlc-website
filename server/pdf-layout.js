@@ -5,10 +5,11 @@ const SVGtoPDF = require("svg-to-pdfkit");
 
 const WEBSITE_LOGO_PATH = path.join(
   __dirname,
-  "..",
-  "assets",
-  "images",
-  "logo.svg",
+  '..',
+  'assets',
+  'images',
+  'logo.png',
+  //'header-logo.svg',
 );
 const AUTHORIZATION_TEXT =
   'By signing below, the Business and Owner(s) identified above (individually, an "Applicant") each represents, acknowledges, and agrees that: ' +
@@ -63,11 +64,20 @@ const REQUIRED_FIELDS = new Set([
   "application_agreement",
 ]);
 
-let WEBSITE_LOGO_SVG = null;
+let WEBSITE_LOGO_ASSET = null;
+let WEBSITE_LOGO_KIND = null;
 try {
-  WEBSITE_LOGO_SVG = fs.readFileSync(WEBSITE_LOGO_PATH, "utf8");
+  const logoExt = path.extname(WEBSITE_LOGO_PATH).toLowerCase();
+  if (logoExt === ".svg") {
+    WEBSITE_LOGO_ASSET = fs.readFileSync(WEBSITE_LOGO_PATH, "utf8");
+    WEBSITE_LOGO_KIND = "svg";
+  } else {
+    WEBSITE_LOGO_ASSET = fs.readFileSync(WEBSITE_LOGO_PATH);
+    WEBSITE_LOGO_KIND = "image";
+  }
 } catch (error) {
-  WEBSITE_LOGO_SVG = null;
+  WEBSITE_LOGO_ASSET = null;
+  WEBSITE_LOGO_KIND = null;
 }
 
 function normalizeValue(value) {
@@ -121,8 +131,13 @@ function markLabel(fieldKey, label, { forceRequired = false } = {}) {
 function drawLogoHeader(doc, options = {}) {
   const margin = doc.page.margins.left;
   const availableWidth = doc.page.width - margin * 2;
-  const logoSvg = normalizeValue(options.logoSvg) || WEBSITE_LOGO_SVG;
+  const logoSvg =
+    normalizeValue(options.logoSvg) ||
+    (WEBSITE_LOGO_KIND === "svg" ? WEBSITE_LOGO_ASSET : null);
+  const logoImage =
+    options.logoImage || (WEBSITE_LOGO_KIND === "image" ? WEBSITE_LOGO_ASSET : null);
   const logoScale = Number(options.headerScale || 0.75);
+  const companyName = (options.companyName || "No Limit Capital").toUpperCase();
 
   if (logoSvg) {
     const baseLogoWidth = 250 * logoScale;
@@ -148,12 +163,50 @@ function drawLogoHeader(doc, options = {}) {
     return dividerY + 7;
   }
 
+  if (logoImage) {
+    // For raster logos, render icon on top and company name below.
+    const iconSize = Math.max(30, Math.round(50 * logoScale));
+    const textGap = 6;
+    const textFontSize = Math.max(14, Math.round(19 * logoScale));
+    const textStyle = {
+      lineBreak: false,
+      characterSpacing: 0.8,
+    };
+    doc.font("Times-Bold").fontSize(textFontSize);
+    const logoX = Math.round((doc.page.width - iconSize) / 2);
+    const logoY = margin - 3;
+
+    doc.image(logoImage, logoX, logoY, {
+      fit: [iconSize, iconSize],
+      align: "center",
+      valign: "center",
+    });
+    const textY = logoY + iconSize + textGap;
+    doc
+      .fillColor("#0f2f3f")
+      .text(companyName, margin, textY, {
+        ...textStyle,
+        width: availableWidth,
+        align: "center",
+      });
+
+    const dividerY = textY + textFontSize + 6;
+    doc.strokeColor("#1a56db").lineWidth(1.2);
+    doc
+      .moveTo(margin, dividerY)
+      .lineTo(doc.page.width - margin, dividerY)
+      .stroke();
+    doc.fillColor("#000000");
+    return dividerY + 7;
+  }
+
   // Fallback: centered text-only header if logo cannot be loaded
-  doc.font("Helvetica-Bold").fontSize(12).fillColor("#1e293b");
-  doc.text(options.companyName || "No Limit Capital", margin, margin + 8, {
+  doc.font("Times-Bold").fontSize(15).fillColor("#0f2f3f");
+  doc.text(companyName, margin, margin + 8, {
     width: availableWidth,
     align: "center",
     lineBreak: false,
+    characterSpacing: 0.35,
   });
 
   const dividerY = margin + 30;
@@ -417,14 +470,6 @@ function drawAuthorizationSection(doc, x, y, width, record, config) {
 
   currentY += config.authorizationOwnerGap;
 
-  // ── Bottom row: EIN | Website ────────────────────────────────────────────
-  currentY = drawAuthorizationDoubleLine(
-    doc, x, currentY, width,
-    { label: "EIN#",                  value: record.business_tax_id,  required: true  },
-    { label: "Website (if applicable)", value: record.business_website, required: false },
-    config,
-  );
-
   return currentY;
 }
 
@@ -437,10 +482,6 @@ function field(fieldKey, label, value, span = 1, options = {}) {
 }
 
 function buildSections(record) {
-  const owner1Name =
-    `${record.owner_first_name || ""} ${record.owner_last_name || ""}`.trim();
-  const owner2Name =
-    `${record.additional_owner_first_name || ""} ${record.additional_owner_last_name || ""}`.trim();
   const preferredContact =
     `${record.first_name || ""} ${record.last_name || ""}`.trim();
 
@@ -448,152 +489,167 @@ function buildSections(record) {
     {
       title: "BUSINESS INFORMATION",
       rows: [
+        // Row 1: Legal Name | DBA Name
         [
           field(
             "legal_business_name",
             "Business Legal Name",
             record.legal_business_name,
             8,
+            { forceRequired: true },
           ),
           field("business_dba", "Business DBA Name", record.business_dba, 8),
         ],
+        // Row 2: State of Inc | EIN#
         [
-          field(
-            "business_address",
-            "Business Address",
-            record.business_address,
-            8,
-          ),
-          field("business_city", "City", record.business_city, 3),
-          field("business_state", "State", record.business_state, 2),
-          field("business_zip", "Zip", record.business_zip, 3),
-        ],
-        [
-          field("business_phone", "Business Phone", record.business_phone, 4),
-          field(
-            "business_website",
-            "Business Website",
-            record.business_website,
-            6,
-          ),
-          field("industry", "Industry", record.industry, 6),
-        ],
-        [
-          field("first_name", "Preferred Contact", preferredContact, 4, {
-            forceRequired: true,
-          }),
-          field("contact_number", "Contact Number", record.contact_number, 4),
-          field("email", "Email", record.email, 8),
-        ],
-        [
-          field("legal_entity", "Legal Entity", record.legal_entity, 3),
-          field("business_tax_id", "Tax ID / EIN", record.business_tax_id, 3),
           field(
             "state_of_incorporation",
             "State of Incorporation",
             record.state_of_incorporation,
-            4,
+            8,
           ),
-          field(
-            "business_start_date",
-            "Business Start Date",
-            record.business_start_date,
-            3,
-          ),
-          field("credit_score", "Credit Score", record.credit_score, 3),
+          field("business_tax_id", "EIN #", record.business_tax_id, 8, { forceRequired: true }),
         ],
+        // Row 3: Type of Business Entity
+        [
+          field("legal_entity", "Type of Business Entity", record.legal_entity, 16),
+        ],
+        // Row 4: Address
+        [
+          field(
+            "business_address",
+            "Business Physical Address",
+            record.business_address,
+            16,
+          ),
+        ],
+        // Row 5: City | State | Zip
+        [
+          field("business_city", "City", record.business_city, 5),
+          field("business_state", "State", record.business_state, 5),
+          field("business_zip", "Zip Code", record.business_zip, 6),
+        ],
+        // Row 6: Business Phone | Preferred Contact Name
+        [
+          field("business_phone", "Business Phone", record.business_phone, 8),
+          field("first_name", "Preferred Contact Name", preferredContact, 8, {
+            forceRequired: true,
+          }),
+        ],
+        // Row 7: Contact # | Email
+        [
+          field("contact_number", "Preferred Contact #", record.contact_number, 8),
+          field("email", "Email", record.email, 8),
+        ],
+        // Row 8: Industry Type | Business Website
+        [
+          field("industry", "Industry Type", record.industry, 8),
+          field("business_website", "Business Website", record.business_website, 8),
+        ],
+        // Row 9: Funding Amount | Funding Timeline
         [
           field(
             "loan_amount",
             "Funding Amount Requesting",
             record.loan_amount,
-            4,
+            8,
+            { forceRequired: true },
           ),
           field(
             "funding_timeline",
             "Funding Timeline",
             record.funding_timeline,
-            4,
+            8,
           ),
-          field("loan_use", "Use of Proceeds", record.loan_use, 8),
         ],
+        // Row 10: Gross Annual Sales | Avg Monthly Deposits | Credit Score
         [
           field(
             "gross_annual_sales",
             "Gross Annual Sales",
             record.gross_annual_sales,
-            4,
+            5,
           ),
           field(
             "avg_monthly_deposits",
             "Avg Monthly Deposits",
             record.avg_monthly_deposits,
-            4,
+            5,
+          ),
+          field("credit_score", "Credit Score", record.credit_score, 6),
+        ],
+        // Row 11: Business Start Date | Avg Daily Balance
+        [
+          field(
+            "business_start_date",
+            "Business Start Date",
+            record.business_start_date,
+            8,
           ),
           field(
             "avg_daily_balance",
-            "Avg Daily Balance",
+            "Average Daily Balance",
             record.avg_daily_balance,
-            4,
-          ),
-          field(
-            "credit_card_processor",
-            "Card Processor",
-            record.credit_card_processor,
-            4,
+            8,
           ),
         ],
+        // Row 13: Use of Proceeds | Credit Card Processor
+        [
+          field("loan_use", "Use of Proceeds", record.loan_use, 8),
+          field(
+            "credit_card_processor",
+            "Credit Card Processor",
+            record.credit_card_processor,
+            8,
+          ),
+        ],
+        // Row 14: Any Outstanding Loan Balances? | If YES, List Balance
         [
           field(
             "has_other_financing",
-            "Other Financing",
+            "Any Outstanding Loan Balances?",
             toYesNo(record.has_other_financing),
-            3,
+            8,
           ),
           field(
             "outstanding_balance",
-            "Outstanding Balance",
+            "If YES, List Balance",
             record.outstanding_balance,
-            3,
+            8,
           ),
+        ],
+        // Row 15: Funding Company
+        [
           field(
             "funding_company",
             "Funding Company",
             record.funding_company,
-            4,
-          ),
-          field(
-            "has_open_bankruptcies",
-            "Open Bankruptcies",
-            toYesNo(record.has_open_bankruptcies),
-            3,
-          ),
-          field(
-            "has_judgements_liens",
-            "Judgements/Liens",
-            toYesNo(record.has_judgements_liens),
-            3,
+            16,
           ),
         ],
+        // Row 16: Seasonal Business? | If YES, List Peak Months
         [
           field(
             "seasonal_business",
-            "Seasonal Business",
+            "Seasonal Business?",
             toYesNo(record.seasonal_business),
-            3,
+            8,
           ),
-          field("peak_months", "Peak Months", record.peak_months, 5),
+          field("peak_months", "If YES, List Peak Months", record.peak_months, 8),
+        ],
+        // Row 17: Any Open Bankruptcies? | Any Judgements / Liens?
+        [
           field(
-            "application_agreement",
-            "Application Agreement",
-            toYesNo(record.application_agreement),
-            4,
+            "has_open_bankruptcies",
+            "Any Open Bankruptcies?",
+            toYesNo(record.has_open_bankruptcies),
+            8,
           ),
           field(
-            "contact_agreement",
-            "Contact Agreement",
-            toYesNo(record.contact_agreement),
-            4,
+            "has_judgements_liens",
+            "Any Judgements / Liens?",
+            toYesNo(record.has_judgements_liens),
+            8,
           ),
         ],
       ],
@@ -601,54 +657,62 @@ function buildSections(record) {
     {
       title: "OWNERSHIP INFORMATION",
       rows: [
+        // Owner #1 Row 1: First Name | Last Name | SSN | DOB
         [
-          field("owner_first_name", "Owner #1 Name", owner1Name, 4, {
+          field("owner_first_name", "First Name", record.owner_first_name, 4, {
             forceRequired: true,
           }),
-          field("owner_email", "Owner #1 Email", record.owner_email, 6),
-          field("owner_ssn", "Owner #1 SSN", record.owner_ssn, 2),
-          field("owner_dob", "Owner #1 DOB", record.owner_dob, 2),
-          field("owner_ownership", "Ownership %", record.owner_ownership, 2),
+          field("owner_last_name", "Last Name", record.owner_last_name, 4, {
+            forceRequired: true,
+          }),
+          field("owner_ssn", "SSN", record.owner_ssn, 4, { forceRequired: true }),
+          field("owner_dob", "DOB", record.owner_dob, 4, { forceRequired: true }),
         ],
+        // Owner #1 Row 2: Address | City | State | Zip
         [
-          field("owner_address", "Owner #1 Address", record.owner_address, 8),
+          field("owner_address", "Street Address", record.owner_address, 8),
           field("owner_city", "City", record.owner_city, 3),
           field("owner_state", "State", record.owner_state, 2),
-          field("owner_zip", "Zip", record.owner_zip, 3),
+          field("owner_zip", "Zip Code", record.owner_zip, 3),
         ],
+        // Owner #1 Row 3: Home Phone | Ownership % | Email
         [
-          field("additional_owner_first_name", "Owner #2 Name", owner2Name, 4, {
-            forceRequired: false,
-          }),
+          field("owner_contact", "Home Phone", record.owner_contact, 4),
+          field("owner_ownership", "Ownership %", record.owner_ownership, 4),
+          field("owner_email", "E-mail", record.owner_email, 8),
+        ],
+        // Owner #2 Row 1: First Name | Last Name | SSN | DOB
+        [
           field(
-            "additional_owner_email",
-            "Owner #2 Email",
-            record.additional_owner_email,
-            6,
+            "additional_owner_first_name",
+            "First Name",
+            record.additional_owner_first_name,
+            4,
+          ),
+          field(
+            "additional_owner_last_name",
+            "Last Name",
+            record.additional_owner_last_name,
+            4,
           ),
           field(
             "additional_owner_ssn",
-            "Owner #2 SSN",
+            "SSN",
             record.additional_owner_ssn,
-            2,
+            4,
           ),
           field(
             "additional_owner_dob",
-            "Owner #2 DOB",
+            "DOB",
             record.additional_owner_dob,
-            2,
-          ),
-          field(
-            "additional_owner_ownership",
-            "Owner #2 Own %",
-            record.additional_owner_ownership,
-            2,
+            4,
           ),
         ],
+        // Owner #2 Row 2: Address | City | State | Zip
         [
           field(
             "additional_owner_address",
-            "Owner #2 Address",
+            "Street Address",
             record.additional_owner_address,
             8,
           ),
@@ -664,17 +728,28 @@ function buildSections(record) {
             record.additional_owner_state,
             2,
           ),
-          field("additional_owner_zip", "Zip", record.additional_owner_zip, 3),
+          field("additional_owner_zip", "Zip Code", record.additional_owner_zip, 3),
         ],
+        // Owner #2 Row 3: Home Phone | Ownership % | Email
         [
-          field("owner_contact", "Owner #1 Phone", record.owner_contact, 4),
           field(
             "additional_owner_contact",
-            "Owner #2 Phone",
+            "Home Phone",
             record.additional_owner_contact,
             4,
           ),
-          field("id", "Application ID", record.id, 8, { forceRequired: true }),
+          field(
+            "additional_owner_ownership",
+            "Ownership %",
+            record.additional_owner_ownership,
+            4,
+          ),
+          field(
+            "additional_owner_email",
+            "E-mail",
+            record.additional_owner_email,
+            8,
+          ),
         ],
       ],
     },
@@ -743,13 +818,13 @@ function buildSections(record) {
 
 function createLayoutConfig(scale = 1, options = {}) {
   return {
-    rowHeight: Math.max(14, Math.floor(23 * scale)),
+    rowHeight: Math.max(15, Math.floor(26 * scale)),
     sectionHeaderHeight: Math.max(11, Math.floor(15 * scale)),
     sectionGap: Math.max(3, Math.floor(6 * scale)),
     labelFontSize: Math.max(5.2, 6.4 * scale),
     valueFontSize: Math.max(6.9, 8.4 * scale),
     sectionFontSize: Math.max(7.2, 8.7 * scale),
-    valueOffsetY: Math.max(9, Math.floor(13 * scale)),
+    valueOffsetY: Math.max(10, Math.floor(15 * scale)),
     legendFontSize: Math.max(5.4, 6.6 * scale),
     legendHeight: Math.max(7, Math.floor(10 * scale)),
 
@@ -761,9 +836,9 @@ function createLayoutConfig(scale = 1, options = {}) {
     authorizationAfterTermsGap: Math.max(3, Math.floor(5 * scale)),
     authorizationLineLabelFontSize: Math.max(6.0, 7.0 * scale),
     authorizationLineValueFontSize: Math.max(6.2, 7.1 * scale),
-    authorizationLineGap: Math.max(12, Math.floor(16 * scale)),
-    authorizationLineBaselineOffset: Math.max(8, Math.floor(10 * scale)),
-    authorizationOwnerGap: Math.max(2, Math.floor(3 * scale)),
+    authorizationLineGap: Math.max(13, Math.floor(18 * scale)),
+    authorizationLineBaselineOffset: Math.max(8, Math.floor(11 * scale)),
+    authorizationOwnerGap: Math.max(2, Math.floor(4 * scale)),
     authorizationColumnGap: Math.max(8, Math.floor(12 * scale)),
 
     showEmptyPlaceholder: options.showEmptyPlaceholder !== false,
@@ -784,7 +859,7 @@ function estimateBodyHeight(sections, config) {
     config.authorizationLabelGap +
     config.authorizationTextHeight +
     config.authorizationAfterTermsGap +
-    config.authorizationLineGap * 7 +
+    config.authorizationLineGap * 4 +
     config.authorizationOwnerGap * 2;
 
   return (
@@ -848,12 +923,21 @@ function renderOnePageLayout(doc, record, options = {}) {
 }
 
 async function generateApplicationPdfBuffer(record, options = {}) {
-  let logoSvg = WEBSITE_LOGO_SVG;
+  let logoSvg = WEBSITE_LOGO_KIND === "svg" ? WEBSITE_LOGO_ASSET : null;
+  let logoImage = WEBSITE_LOGO_KIND === "image" ? WEBSITE_LOGO_ASSET : null;
   if (options.logoPath) {
     try {
-      logoSvg = fs.readFileSync(options.logoPath, "utf8");
+      const logoExt = path.extname(options.logoPath).toLowerCase();
+      if (logoExt === ".svg") {
+        logoSvg = fs.readFileSync(options.logoPath, "utf8");
+        logoImage = null;
+      } else {
+        logoImage = fs.readFileSync(options.logoPath);
+        logoSvg = null;
+      }
     } catch (error) {
-      logoSvg = WEBSITE_LOGO_SVG;
+      logoSvg = WEBSITE_LOGO_KIND === "svg" ? WEBSITE_LOGO_ASSET : null;
+      logoImage = WEBSITE_LOGO_KIND === "image" ? WEBSITE_LOGO_ASSET : null;
     }
   }
 
@@ -876,6 +960,7 @@ async function generateApplicationPdfBuffer(record, options = {}) {
     renderOnePageLayout(doc, record, {
       ...options,
       logoSvg,
+      logoImage,
     });
     doc.end();
   });

@@ -47,7 +47,7 @@ const GENERATED_PDF_DIR = path.join(WRITABLE_ROOT, 'generated-pdfs');
 // Static assets (read-only) stay in project root
 // Use process.cwd() to locate assets reliably in Vercel bundle
 const PROJECT_ROOT = IS_SERVERLESS ? process.cwd() : path.join(__dirname, '..');
-const LOGO_PATH = path.join(PROJECT_ROOT, 'assets', 'images', 'logo.svg');
+const LOGO_PATH = path.join(PROJECT_ROOT, 'assets', 'images', 'logo.png');
 const PDF_TEMPLATE_DIR = path.join(__dirname, 'pdf-templates');
 const PDF_FORM_TEMPLATE_PATH = path.join(PDF_TEMPLATE_DIR, 'nolimitcap-empty-application.pdf');
 
@@ -1037,8 +1037,58 @@ async function sendToHubSpotCrm(record) {
   }
 }
 
+// ===========================================
+// Switchbox AI CRM Integration
+// ===========================================
+
+const SWITCHBOX_API_URL = process.env.SWITCHBOX_API_URL;
+const SWITCHBOX_API_KEY = process.env.SWITCHBOX_API_KEY;
+
+async function sendToSwitchboxCrm(record) {
+  if (!SWITCHBOX_API_URL) {
+    return { status: 'skipped', reason: 'Switchbox URL not configured' };
+  }
+
+  try {
+    const response = await fetch(SWITCHBOX_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SWITCHBOX_API_KEY}`,
+        'X-API-Key': SWITCHBOX_API_KEY, // Try both standard headers
+      },
+      body: JSON.stringify(record),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Switchbox CRM error:', errorText);
+      return { status: 'failed', code: response.status, provider: 'switchbox-ai', error: errorText };
+    }
+
+    const data = await response.json();
+    return { status: 'sent', code: response.status, provider: 'switchbox-ai', data };
+  } catch (error) {
+    console.error('Switchbox CRM exception:', error);
+    return { status: 'error', error: error.message, provider: 'switchbox-ai' };
+  }
+}
+
 async function sendToCrm(record) {
-  return sendToHubSpotCrm(record);
+  const results = {};
+  
+  // Send to HubSpot (if configured)
+  results.hubspot = await sendToHubSpotCrm(record);
+
+  // Send to Switchbox AI (if configured)
+  results.switchbox = await sendToSwitchboxCrm(record);
+
+  // Return success if at least one succeeded, or the result of the primary one (Switchbox preference?)
+  // For now, return a combined status
+  return {
+    status: (results.hubspot.status === 'sent' || results.switchbox.status === 'sent') ? 'sent' : 'failed',
+    providers: results
+  };
 }
 
 // ===========================================

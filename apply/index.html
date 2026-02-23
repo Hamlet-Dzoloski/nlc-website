@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/svg+xml" href="/assets/images/favicon.svg" />
+    <link rel="icon" type="image/png" href="/assets/images/favicon.png" />
     <title>Apply Now | No Limit Capital</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -14,7 +14,7 @@
     <header class="site-header">
       <div class="container nav">
         <a class="logo" href="/index.html">
-          <img src="/assets/images/logo.svg" alt="No Limit Capital" width="160" height="48" />
+          <img src="/assets/images/logo.png" alt="No Limit Capital" width="56" height="56" />
         </a>
         <nav class="nav-links" data-nav>
           <a href="/index.html">Home</a>
@@ -475,64 +475,44 @@
                       <p>By signing below, the Business and Owner(s) identified above (individually, an &ldquo;Applicant&rdquo;) each represents, acknowledges, and agrees that: (1) all information and documents provided in connection with this application are true, accurate, and complete; (2) Applicant will immediately notify No Limit Capital of any change in the Business financial condition; (3) Applicant understands that No Limit Capital may share this information with its representatives, successors, assigns, affiliates and partners as well as third-party lenders/funders and their servicers and financial institutions (&ldquo;Recipients&rdquo;); (4) Applicant authorizes No Limit Capital and Recipients to request and receive any investigative reports, consumer credit reports, trade references, statements from creditors or financial institutions, verifications of information, or any other necessary information; (5) Applicant waives and releases any claims against No Limit Capital, Recipients and any information-providers arising from any act or omission relating to the requesting, receiving, or release of information; (6) each Owner represents that he or she is authorized to sign and submit this application on behalf of Business.</p>
                     </div>
 
-                    <!-- Two-column signature block — mirrors PDF layout exactly -->
-                    <div class="auth-sig-grid">
+                     <!-- Two-column signature block — mirrors PDF layout exactly -->
+                     <div class="auth-sig-grid">
 
-                      <!-- LEFT: Owner #1 -->
-                      <div class="auth-sig-col">
-                        <div class="auth-col-header">Owner #1 <span class="auth-required">*</span></div>
-                        <label class="field">
-                          <span>Name (Print) *</span>
-                          <input type="text" name="owner1_print_name" placeholder="Full legal name" required />
-                        </label>
-                        <label class="field">
-                          <span>Signature *</span>
-                          <input type="text" name="signature" placeholder="Type full name as signature" required />
-                        </label>
-                        <label class="field">
-                          <span>Date *</span>
-                          <input type="date" name="application_date" required />
-                        </label>
-                      </div>
+                       <!-- LEFT: Owner #1 -->
+                       <div class="auth-sig-col">
+                         <div class="auth-col-header">Owner #1 <span class="auth-required">*</span></div>
+                         <label class="field">
+                           <span>Signature *</span>
+                           <input type="text" name="signature" placeholder="Type full name as signature" required />
+                         </label>
+                         <label class="field">
+                           <span>Date *</span>
+                           <input type="date" name="application_date" required />
+                         </label>
+                       </div>
 
-                      <!-- VERTICAL DIVIDER -->
-                      <div class="auth-sig-divider"></div>
+                       <!-- VERTICAL DIVIDER -->
+                       <div class="auth-sig-divider"></div>
 
-                      <!-- RIGHT: Owner #2 -->
-                      <div class="auth-sig-col">
-                        <div class="auth-col-header">Owner #2 <span class="auth-optional">(if applicable)</span></div>
-                        <label class="field">
-                          <span>Name (Print)</span>
-                          <input type="text" name="owner2_print_name" placeholder="Full legal name" />
-                        </label>
-                        <label class="field">
-                          <span>Signature</span>
-                          <input type="text" name="signature_additional" placeholder="Type full name as signature" />
-                        </label>
-                        <label class="field">
-                          <span>Date</span>
-                          <input type="date" name="application_date_additional" />
-                        </label>
-                      </div>
-                    </div>
+                       <!-- RIGHT: Owner #2 -->
+                       <div class="auth-sig-col">
+                         <div class="auth-col-header">Owner #2 <span class="auth-optional">(if applicable)</span></div>
+                         <label class="field">
+                           <span>Signature</span>
+                           <input type="text" name="signature_additional" placeholder="Type full name as signature" />
+                         </label>
+                         <label class="field">
+                           <span>Date</span>
+                           <input type="date" name="application_date_additional" />
+                         </label>
+                       </div>
+                     </div>
 
-                    <!-- EIN / Website bottom row — mirrors PDF bottom of Authorization -->
-                    <div class="field-grid" style="margin-top:20px;">
-                      <label class="field">
-                        <span>EIN # *</span>
-                        <input type="text" name="business_tax_id_confirm" placeholder="XX-XXXXXXX" required />
-                      </label>
-                      <label class="field">
-                        <span>Website (if applicable)</span>
-                        <input type="url" name="business_website_confirm" placeholder="https://" />
-                      </label>
-                    </div>
-
-                    <label class="field checkbox-line" style="margin-top:20px;">
-                      <input type="checkbox" name="application_agreement" required />
-                      <span>I agree to the Application and Credit Profile Agreement. *</span>
-                    </label>
-                  </div>
+                     <label class="field checkbox-line" style="margin-top:20px;">
+                       <input type="checkbox" name="application_agreement" required />
+                       <span>I agree to the Application and Credit Profile Agreement. *</span>
+                     </label>
+                   </div>
 
                 </div><!-- /apply-steps -->
 

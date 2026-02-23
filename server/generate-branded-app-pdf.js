@@ -7,7 +7,7 @@ const fs = require('fs/promises');
 const path = require('path');
 const { generateApplicationPdfBuffer } = require('./pdf-layout');
 
-const LOGO_PATH = path.join(__dirname, '..', 'assets', 'images', 'logo.svg');
+const LOGO_PATH = path.join(__dirname, '..', 'assets', 'images', 'logo.png');
 const COMPANY   = 'No Limit Capital';
 const MARGIN    = 24;
 const SCALE     = 0.75;

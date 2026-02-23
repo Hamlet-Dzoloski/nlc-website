@@ -1,0 +1,9 @@
+{
+  "name": "nolimitcap-website",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "cd server && node server.js",
+    "start": "cd server && node server.js"
+  }
+}

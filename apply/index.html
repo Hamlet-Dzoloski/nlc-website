@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/png" href="/assets/images/favicon.png" />
+    <title>Apply Now | No Limit Capital</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/assets/css/style.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container nav">
+        <a class="logo" href="/index.html">
+          <img src="/assets/images/logo.png" alt="No Limit Capital" width="56" height="56" />
+        </a>
+        <nav class="nav-links" data-nav>
+          <a href="/index.html">Home</a>
+          <a href="/business.html">Business</a>
+          <a href="/about.html">About</a>
+          <a href="/products.html">Products</a>
+          <a href="/partner.html">Partner</a>
+          <a href="/contact.html">Contact</a>
+        </nav>
+        <div class="nav-actions">
+          <a class="btn ghost" href="/contact.html">Get a Quote</a>
+          <button class="nav-toggle" data-nav-toggle>Menu</button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="page-hero">
+        <div class="container">
+          <div class="eyebrow">Apply Now</div>
+          <h1>You're 5 minutes away from business funding.</h1>
+          <p>Complete the questionnaire below and our team will review your application the same day.</p>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container">
+          <form
+            class="form-card apply-form"
+            data-submit
+            data-form="apply"
+            data-endpoint="/api/apply"
+            data-submit-type="multipart"
+            data-step-form
+            enctype="multipart/form-data"
+          >
+            <div class="apply-layout">
+              <aside class="apply-sidebar">
+                <div class="sidebar-badge">Pre-Approval Same Day</div>
+                <p class="sidebar-copy">Once approved, funds can be deposited next business day.</p>
+                <div class="step-tabs step-tabs-vertical">
+                  <button type="button" class="step-tab" data-step-jump="0">Funding Request</button>
+                  <button type="button" class="step-tab" data-step-jump="1">Business Info</button>
+                  <button type="button" class="step-tab" data-step-jump="2">Ownership</button>
+                  <button type="button" class="step-tab" data-step-jump="3">References</button>
+                  <button type="button" class="step-tab" data-step-jump="4">Authorization</button>
+                </div>
+                <div class="sidebar-box">
+                  <h3>Secure Submission</h3>
+                  <p>Your information is encrypted and reviewed only by our funding team.</p>
+                </div>
+              </aside>
+
+              <div class="apply-panel">
+                <div class="apply-progress">
+                  <div class="progress-bar">
+                    <span class="progress-fill" data-progress-fill></span>
+                  </div>
+                  <div class="progress-meta">
+                    <span data-progress-text>Step 1 of 5</span>
+                    <span data-progress-percent>20%</span>
+                  </div>
+                </div>
+
+                <div class="apply-steps">
+
+                  <!-- ======================================================
+                       STEP 0 — FUNDING REQUEST & BASIC CONTACT
+                       ====================================================== -->
+                  <div class="apply-step" data-step="0">
+                    <h2>Funding Request</h2>
+                    <div class="field-grid">
+                      <label class="field">
+                        <span>Funding Amount Requesting *</span>
+                        <input type="text" name="loan_amount" placeholder="e.g. $50,000" required />
+                      </label>
+                      <label class="field">
+                        <span>Funding Timeline *</span>
+                        <select name="funding_timeline" required>
+                          <option value="">Select</option>
+                          <option>Immediately</option>
+                          <option>Within 1 week</option>
+                          <option>Within 2 weeks</option>
+                          <option>Within 1 month</option>
+                          <option>Flexible</option>
+                        </select>
+                      </label>
+                      <label class="field" style="grid-column: 1 / -1;">
+                        <span>Use of Proceeds</span>
+                        <input type="text" name="loan_use" placeholder="e.g. Equipment, Expansion, Working Capital…" />
+                      </label>
+                    </div>
+
+                    <h2 style="margin-top:24px;">Preferred Contact</h2>
+                    <div class="field-grid">
+                      <label class="field">
+                        <span>First Name *</span>
+                        <input type="text" name="first_name" required />
+                      </label>
+                      <label class="field">
+                        <span>Last Name *</span>
+                        <input type="text" name="last_name" required />
+                      </label>
+                      <label class="field">
+                        <span>Contact Number *</span>
+                        <input type="tel" name="contact_number" required />
+                      </label>
+                      <label class="field">
+                        <span>Email Address *</span>
+                        <input type="email" name="email" required />
+                      </label>
+                    </div>
+
+                    <label class="field checkbox-line" style="margin-top:12px;">
+                      <input type="checkbox" name="contact_agreement" required />
+                      <span>I agree to the <a href="#" class="terms-link" data-open-modal="privacy-modal">Terms &amp; Privacy</a> provided by No Limit Capital and consent to text messages. *</span>
+                    </label>
+                  </div>
+
+                  <!-- ======================================================
+                       STEP 1 — BUSINESS INFORMATION
+                       ====================================================== -->
+                  <div class="apply-step" data-step="1" hidden>
+                    <h2>Business Information</h2>
+                    <div class="field-grid">
+                      <label class="field">
+                        <span>Business Legal Name *</span>
+                        <input type="text" name="legal_business_name" required />
+                      </label>
+                      <label class="field">
+                        <span>Business DBA Name *</span>
+                        <input type="text" name="business_dba" required />
+                      </label>
+                      <label class="field" style="grid-column: 1 / -1;">
+                        <span>Business Address *</span>
+                        <input type="text" name="business_address" required />
+                      </label>
+                      <label class="field">
+                        <span>City *</span>
+                        <input type="text" name="business_city" required />
+                      </label>
+                      <label class="field">
+                        <span>State *</span>
+                        <input type="text" name="business_state" maxlength="2" placeholder="e.g. NY" required />
+                      </label>
+                      <label class="field">
+                        <span>Zip *</span>
+                        <input type="text" name="business_zip" required />
+                      </label>
+                      <label class="field">
+                        <span>Business Phone *</span>
+                        <input type="tel" name="business_phone" required />
+                      </label>
+                      <label class="field">
+                        <span>Business Website</span>
+                        <input type="url" name="business_website" placeholder="https://" />
+                      </label>
+                      <label class="field">
+                        <span>Industry *</span>
+                        <select name="industry" required>
+                          <option value="">Select</option>
+                          <option>Automotive</option>
+                          <option>Care Providers</option>
+                          <option>Construction</option>
+                          <option>Entertainment</option>
+                          <option>Hospitality</option>
+                          <option>Manufacturing</option>
+                          <option>Medical/Health</option>
+                          <option>Restaurant</option>
+                          <option>Retail Stores</option>
+                          <option>Sales/Wholesale Distribution</option>
+                          <option>Services (Other)</option>
+                          <option>Services (Professional)</option>
+                          <option>Specialized Freight</option>
+                          <option>Technology Sales &amp; Installation</option>
+                          <option>Transportation</option>
+                          <option>Waste/Environmental Services</option>
+                          <option>Other</option>
+                        </select>
+                      </label>
+                      <label class="field">
+                        <span>Legal Entity *</span>
+                        <select name="legal_entity" required>
+                          <option value="">Select</option>
+                          <option>Corporation</option>
+                          <option>LLC</option>
+                          <option>LLP</option>
+                          <option>Ltd. Partnership</option>
+                          <option>Partnership</option>
+                          <option>Sole Proprietor</option>
+                        </select>
+                      </label>
+                      <label class="field">
+                        <span>Tax ID / EIN *</span>
+                        <input type="text" name="business_tax_id" placeholder="XX-XXXXXXX" required />
+                      </label>
+                      <label class="field">
+                        <span>State of Incorporation *</span>
+                        <input type="text" name="state_of_incorporation" maxlength="2" placeholder="e.g. DE" required />
+                      </label>
+                      <label class="field">
+                        <span>Business Start Date *</span>
+                        <input type="date" name="business_start_date" required />
+                      </label>
+                      <label class="field">
+                        <span>Credit Score *</span>
+                        <input type="number" name="credit_score" min="300" max="850" required />
+                      </label>
+                    </div>
+
+                    <h2 style="margin-top:24px;">Financial Summary</h2>
+                    <div class="field-grid">
+                      <label class="field">
+                        <span>Gross Annual Sales *</span>
+                        <input type="text" name="gross_annual_sales" placeholder="$" required />
+                      </label>
+                      <label class="field">
+                        <span>Avg Monthly Deposits *</span>
+                        <input type="text" name="avg_monthly_deposits" placeholder="$" required />
+                      </label>
+                      <label class="field">
+                        <span>Avg Daily Balance *</span>
+                        <input type="text" name="avg_daily_balance" placeholder="$" required />
+                      </label>
+                      <label class="field">
+                        <span>Credit Card Processor</span>
+                        <input type="text" name="credit_card_processor" placeholder="e.g. Square, Stripe" />
+                      </label>
+                    </div>
+
+                    <h2 style="margin-top:24px;">Additional Business Details</h2>
+                    <div class="field-grid">
+                      <label class="field">
+                        <span>Other Short-Term Financing? *</span>
+                        <select name="has_other_financing" required>
+                          <option value="">Select</option>
+                          <option>Yes</option>
+                          <option>No</option>
+                        </select>
+                      </label>
+                      <label class="field">
+                        <span>Outstanding Balance</span>
+                        <input type="text" name="outstanding_balance" placeholder="$0" />
+                      </label>
+                      <label class="field">
+                        <span>Funding Company</span>
+                        <input type="text" name="funding_company" />
+                      </label>
+                      <label class="field">
+                        <span>Open Bankruptcies? *</span>
+                        <select name="has_open_bankruptcies" required>
+                          <option value="">Select</option>
+                          <option>Yes</option>
+                          <option>No</option>
+                        </select>
+                      </label>
+                      <label class="field">
+                        <span>Judgements / Liens? *</span>
+                        <select name="has_judgements_liens" required>
+                          <option value="">Select</option>
+                          <option>Yes</option>
+                          <option>No</option>
+                        </select>
+                      </label>
+                      <label class="field">
+                        <span>Seasonal Business? *</span>
+                        <select name="seasonal_business" required>
+                          <option value="">Select</option>
+                          <option>Yes</option>
+                          <option>No</option>
+                        </select>
+                      </label>
+                      <label class="field">
+                        <span>Peak Months (if seasonal)</span>
+                        <input type="text" name="peak_months" placeholder="e.g. Nov, Dec, Jan" />
+                      </label>
+                      <label class="field">
+                        <span>Application Agreement *</span>
+                        <select name="application_agreement" required>
+                          <option value="">Select</option>
+                          <option>Yes</option>
+                          <option>No</option>
+                        </select>
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- ======================================================
+                       STEP 2 — OWNERSHIP INFORMATION
+                       ====================================================== -->
+                  <div class="apply-step" data-step="2" hidden>
+                    <h2>Owner #1 Information</h2>
+                    <div class="field-grid">
+                      <label class="field">
+                        <span>First Name *</span>
+                        <input type="text" name="owner_first_name" required />
+                      </label>
+                      <label class="field">
+                        <span>Last Name *</span>
+                        <input type="text" name="owner_last_name" required />
+                      </label>
+                      <label class="field">
+                        <span>Email Address *</span>
+                        <input type="email" name="owner_email" required />
+                      </label>
+                      <label class="field">
+                        <span>Social Security Number *</span>
+                        <input type="text" name="owner_ssn" placeholder="XXX-XX-XXXX" required />
+                      </label>
+                      <label class="field">
+                        <span>Date of Birth *</span>
+                        <input type="date" name="owner_dob" required />
+                      </label>
+                      <label class="field">
+                        <span>Ownership % *</span>
+                        <input type="number" name="owner_ownership" min="1" max="100" required />
+                      </label>
+                      <label class="field" style="grid-column: 1 / -1;">
+                        <span>Home Address *</span>
+                        <input type="text" name="owner_address" required />
+                      </label>
+                      <label class="field">
+                        <span>City *</span>
+                        <input type="text" name="owner_city" required />
+                      </label>
+                      <label class="field">
+                        <span>State *</span>
+                        <input type="text" name="owner_state" maxlength="2" required />
+                      </label>
+                      <label class="field">
+                        <span>Zip *</span>
+                        <input type="text" name="owner_zip" required />
+                      </label>
+                      <label class="field">
+                        <span>Phone Number *</span>
+                        <input type="tel" name="owner_contact" required />
+                      </label>
+                    </div>
+
+                    <h2 style="margin-top:24px;">Owner #2 Information <span style="font-size:14px;font-weight:400;color:#64748b;">(if applicable)</span></h2>
+                    <div class="field-grid">
+                      <label class="field">
+                        <span>First Name</span>
+                        <input type="text" name="additional_owner_first_name" />
+                      </label>
+                      <label class="field">
+                        <span>Last Name</span>
+                        <input type="text" name="additional_owner_last_name" />
+                      </label>
+                      <label class="field">
+                        <span>Email Address</span>
+                        <input type="email" name="additional_owner_email" />
+                      </label>
+                      <label class="field">
+                        <span>Social Security Number</span>
+                        <input type="text" name="additional_owner_ssn" placeholder="XXX-XX-XXXX" />
+                      </label>
+                      <label class="field">
+                        <span>Date of Birth</span>
+                        <input type="date" name="additional_owner_dob" />
+                      </label>
+                      <label class="field">
+                        <span>Ownership %</span>
+                        <input type="number" name="additional_owner_ownership" min="1" max="100" />
+                      </label>
+                      <label class="field" style="grid-column: 1 / -1;">
+                        <span>Home Address</span>
+                        <input type="text" name="additional_owner_address" />
+                      </label>
+                      <label class="field">
+                        <span>City</span>
+                        <input type="text" name="additional_owner_city" />
+                      </label>
+                      <label class="field">
+                        <span>State</span>
+                        <input type="text" name="additional_owner_state" maxlength="2" />
+                      </label>
+                      <label class="field">
+                        <span>Zip</span>
+                        <input type="text" name="additional_owner_zip" />
+                      </label>
+                      <label class="field">
+                        <span>Phone Number</span>
+                        <input type="tel" name="additional_owner_contact" />
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- ======================================================
+                       STEP 3 — REFERENCES
+                       ====================================================== -->
+                  <div class="apply-step" data-step="3" hidden>
+                    <h2>References</h2>
+                    <p style="color:#64748b;margin-bottom:20px;font-size:14px;">Please provide your landlord/mortgage company and up to two business trade references.</p>
+
+                    <h3 style="font-size:15px;font-weight:600;color:#1e293b;margin-bottom:12px;">Landlord / Mortgage Company</h3>
+                    <div class="field-grid">
+                      <label class="field" style="grid-column: 1 / -1;">
+                        <span>Landlord / Mortgage Company Name</span>
+                        <input type="text" name="landlord_name_mortgage_company" />
+                      </label>
+                      <label class="field">
+                        <span>Contact Person</span>
+                        <input type="text" name="landlord_contact_person" />
+                      </label>
+                      <label class="field">
+                        <span>Phone #</span>
+                        <input type="tel" name="landlord_phone" />
+                      </label>
+                    </div>
+
+                    <h3 style="font-size:15px;font-weight:600;color:#1e293b;margin:20px 0 12px;">Business Trade Reference #2</h3>
+                    <div class="field-grid">
+                      <label class="field" style="grid-column: 1 / -1;">
+                        <span>Business / Company Name</span>
+                        <input type="text" name="business_trade_reference_2" />
+                      </label>
+                      <label class="field">
+                        <span>Contact Person</span>
+                        <input type="text" name="business_trade_reference_2_contact_person" />
+                      </label>
+                      <label class="field">
+                        <span>Phone #</span>
+                        <input type="tel" name="business_trade_reference_2_phone" />
+                      </label>
+                    </div>
+
+                    <h3 style="font-size:15px;font-weight:600;color:#1e293b;margin:20px 0 12px;">Business Trade Reference #3</h3>
+                    <div class="field-grid">
+                      <label class="field" style="grid-column: 1 / -1;">
+                        <span>Business / Company Name</span>
+                        <input type="text" name="business_trade_reference_3" />
+                      </label>
+                      <label class="field">
+                        <span>Contact Person</span>
+                        <input type="text" name="business_trade_reference_3_contact_person" />
+                      </label>
+                      <label class="field">
+                        <span>Phone #</span>
+                        <input type="tel" name="business_trade_reference_3_phone" />
+                      </label>
+                    </div>
+
+                    <h2 style="margin-top:28px;">Bank Statements</h2>
+                    <div class="field">
+                      <span>Upload last 4 months of bank statements (PDF only)</span>
+                      <input type="file" name="bank_statements" accept="application/pdf" multiple />
+                      <small class="help-text">Max 80MB each. You can skip and submit without files.</small>
+                    </div>
+                  </div>
+
+                  <!-- ======================================================
+                       STEP 4 — AUTHORIZATION & SIGNATURE
+                       ====================================================== -->
+                  <div class="apply-step" data-step="4" hidden>
+                    <h2>Authorization</h2>
+                    <div class="auth-terms-box">
+                      <p>By signing below, the Business and Owner(s) identified above (individually, an &ldquo;Applicant&rdquo;) each represents, acknowledges, and agrees that: (1) all information and documents provided in connection with this application are true, accurate, and complete; (2) Applicant will immediately notify No Limit Capital of any change in the Business financial condition; (3) Applicant understands that No Limit Capital may share this information with its representatives, successors, assigns, affiliates and partners as well as third-party lenders/funders and their servicers and financial institutions (&ldquo;Recipients&rdquo;); (4) Applicant authorizes No Limit Capital and Recipients to request and receive any investigative reports, consumer credit reports, trade references, statements from creditors or financial institutions, verifications of information, or any other necessary information; (5) Applicant waives and releases any claims against No Limit Capital, Recipients and any information-providers arising from any act or omission relating to the requesting, receiving, or release of information; (6) each Owner represents that he or she is authorized to sign and submit this application on behalf of Business.</p>
+                    </div>
+
+                     <!-- Two-column signature block — mirrors PDF layout exactly -->
+                     <div class="auth-sig-grid">
+
+                       <!-- LEFT: Owner #1 -->
+                       <div class="auth-sig-col">
+                         <div class="auth-col-header">Owner #1 <span class="auth-required">*</span></div>
+                         <label class="field">
+                           <span>Signature *</span>
+                           <input type="text" name="signature" placeholder="Type full name as signature" required />
+                         </label>
+                         <label class="field">
+                           <span>Date *</span>
+                           <input type="date" name="application_date" required />
+                         </label>
+                       </div>
+
+                       <!-- VERTICAL DIVIDER -->
+                       <div class="auth-sig-divider"></div>
+
+                       <!-- RIGHT: Owner #2 -->
+                       <div class="auth-sig-col">
+                         <div class="auth-col-header">Owner #2 <span class="auth-optional">(if applicable)</span></div>
+                         <label class="field">
+                           <span>Signature</span>
+                           <input type="text" name="signature_additional" placeholder="Type full name as signature" />
+                         </label>
+                         <label class="field">
+                           <span>Date</span>
+                           <input type="date" name="application_date_additional" />
+                         </label>
+                       </div>
+                     </div>
+
+                     <label class="field checkbox-line" style="margin-top:20px;">
+                       <input type="checkbox" name="application_agreement" required />
+                       <span>I agree to the Application and Credit Profile Agreement. *</span>
+                     </label>
+                   </div>
+
+                </div><!-- /apply-steps -->
+
+                <div class="apply-actions">
+                  <button type="button" class="btn ghost" data-step-prev disabled>Back</button>
+                  <button type="button" class="btn light" data-step-next>Next</button>
+                  <button type="submit" class="btn" data-step-submit style="display: none;">Submit Application</button>
+                  <div class="form-message"></div>
+                </div>
+              </div><!-- /apply-panel -->
+            </div><!-- /apply-layout -->
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="container footer-grid">
+        <div class="footer-col">
+          <h4>No Limit Capital</h4>
+          <p>Business funding solutions for growing companies. We provide capital, payment processing, and financial tools to help your business succeed.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Company</h4>
+          <a href="/about.html">About</a>
+          <a href="/careers.html">Careers</a>
+          <a href="/partner.html">Partner</a>
+        </div>
+        <div class="footer-col">
+          <h4>Solutions</h4>
+          <a href="/products.html">Products</a>
+          <a href="/business.html">Business</a>
+          <a href="/contact.html">Contact</a>
+        </div>
+        <div class="footer-col">
+          <h4>Legal</h4>
+          <a href="/privacy.html">Privacy Policy</a>
+        </div>
+      </div>
+      <div class="container footer-bottom">
+        <span>2026 No Limit Capital. All rights reserved.</span>
+        <span>Business funding made simple.</span>
+      </div>
+    </footer>
+
+    <!-- Privacy Policy Modal -->
+    <div class="modal-overlay" id="privacy-modal" data-modal>
+      <div class="modal-container">
+        <div class="modal-header">
+          <h2>Privacy Policy</h2>
+          <button class="modal-close" data-close-modal aria-label="Close modal">&times;</button>
+        </div>
+        <div class="modal-content">
+          <div class="privacy-content">
+            <p class="privacy-dates">Effective as of August 1st 2019<br>Last updated June 3rd 2024</p>
+
+            <p>At No Limit Capital and its subsidiaries and affiliates (collectively, "No Limit Capital," "we," "us," or "ours"), we take seriously protecting the privacy of personal information. No Limit Capital provides this Privacy Policy to its website visitors, users, and businesses that access services provided by or through No Limit Capital. We encourage you to read this notice to understand our privacy practices.</p>
+
+            <p>When you use, access, or interact with a No Limit Capital website or otherwise apply for or use our business financial products and related services (together with the site, the "Services"), you are agreeing to our Privacy Policy.</p>
+
+            <p>No Limit Capital reserves the right at its sole discretion to change, modify, add, or remove portions of these terms, at any time. It is your responsibility to check these terms periodically for changes. Your continued use of the site following the posting of changes will mean that you accept and agree to the changes.</p>
+
+            <p>We are committed to protecting your personal information and have implemented controls to protect information furnished to us directly, as well as information we may obtain, with authorization, from third party sources.</p>
+
+            <p>If you have any questions or complaints regarding our Privacy Policy, please contact us at <a href="mailto:info@nolimitcap.com">info@nolimitcap.com</a>.</p>
+
+            <h3>Personal Information We May Collect</h3>
+            <p>In connection with our provision of Services, we collect business information, as well as your personal financial information. The following categories of information may be collected:</p>
+            <ul>
+              <li>Identifiers: First and last name, mailing address, IP address, email address, social security number, or other similar identifiers.</li>
+              <li>Financial Information: Bank account details, credit score, tax ID, annual sales figures.</li>
+              <li>Business Information: Business name, address, industry type, ownership information, and date of incorporation.</li>
+              <li>Commercial Information: Products or services purchased, obtained, or considered.</li>
+              <li>Internet Activity: Information about your internet connection, browser type, and pages visited.</li>
+            </ul>
+
+            <h3>How We Use Your Information</h3>
+            <p>We may use the information we collect to process your business application, verify your identity, conduct appropriate diligence, provide customer support, and improve our Services.</p>
+
+            <h3>How We Share Your Information</h3>
+            <p>We will share your personal information only in the ways described in this Privacy Policy. We may share with third-party service providers, financial institutions and lenders in connection with your funding request, and as required by law.</p>
+
+            <h3>Contact Information</h3>
+            <p>If you have any questions about our privacy policies, please contact us at:</p>
+            <p><strong>No Limit Capital</strong><br>
+            <a href="mailto:info@nolimitcap.com">info@nolimitcap.com</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="/assets/js/config.js"></script>
+    <script src="/assets/js/main.js"></script>
+  </body>
+</html>

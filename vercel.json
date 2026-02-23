@@ -7,12 +7,7 @@
     "api/index.js": {
       "memory": 1024,
       "maxDuration": 15,
-      "includeFiles": [
-        "server/pdf-templates/**",
-        "server/example-pdfs/**",
-        "assets/images/**",
-        "server/data/**"
-      ]
+      "includeFiles": "**/*.{pdf,svg,png,jpg,json}"
     }
   }
 }

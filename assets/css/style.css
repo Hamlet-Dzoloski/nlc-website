@@ -99,23 +99,37 @@ p {
 
 .logo {
   display: inline-flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   font-weight: 700;
   font-size: 18px;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   line-height: 1.1;
-  text-transform: uppercase;
 }
 
-.logo span:first-child {
+.logo img {
+  width: 56px;
+  height: 56px;
+}
+
+.logo-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.logo-text span:first-child {
   color: var(--accent-3);
+  font-size: 18px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
-.logo span:last-child {
+.logo-text span:last-child {
   color: var(--accent);
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 3px;
+  text-transform: uppercase;
 }
 
 .nav-links {

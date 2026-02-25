@@ -858,6 +858,18 @@ footer {
   font-size: 14px;
 }
 
+.footer-contact {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.footer-contact a {
+  display: inline;
+  color: var(--accent);
+}
+
 .footer-bottom {
   margin-top: 24px;
   font-size: 12px;

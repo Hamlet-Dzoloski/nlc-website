@@ -48,7 +48,7 @@ Set these in `server/.env`:
 
 If SMTP details are missing, submission still works and PDF is still generated and saved locally.
 
-## Domain Notes (`nolimitcap.com`)
+## Domain Notes (`nolimitcap.net`)
 
 - Point DNS A record to your server IP.
 - Run backend and serve static frontend from the same host (set `SERVE_STATIC=true`) or reverse proxy with Nginx/Caddy.

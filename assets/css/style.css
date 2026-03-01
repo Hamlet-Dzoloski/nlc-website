@@ -119,11 +119,12 @@ p {
 
 .logo-text span:first-child {
   color: var(--accent-3);
-  font-family: "DM Serif Display", Georgia, serif;
-  font-size: 24px;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 32px;
   text-transform: uppercase;
-  letter-spacing: 1.5px;
-  font-weight: 400;
+  letter-spacing: 2px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .logo-text span:last-child {

@@ -54,7 +54,7 @@ const PDF_FORM_TEMPLATE_PATH = path.join(PDF_TEMPLATE_DIR, 'nolimitcap-empty-app
 const HUBSPOT_ACCESS_TOKEN = process.env.HUBSPOT_ACCESS_TOKEN;
 const CLIENT_AUTH_SECRET = process.env.CLIENT_AUTH_SECRET || process.env.JWT_SECRET || 'change-this-secret';
 const CLIENT_TOKEN_TTL_SECONDS = Math.max(60, Number(process.env.CLIENT_TOKEN_TTL_SECONDS || 60 * 60 * 12));
-const DEFAULT_ADMIN_EMAIL = 'admin@nolimitcap.net';
+const DEFAULT_ADMIN_EMAIL = 'info@nolimitcap.net';
 const DEFAULT_ADMIN_PASSWORD = 'ChangeMeNow123!';
 const RATE_LIMIT_WINDOW_MS = Math.max(10 * 1000, Number(process.env.RATE_LIMIT_WINDOW_MS || 10 * 60 * 1000));
 const RATE_LIMIT_MAX_REQUESTS = Math.max(10, Number(process.env.RATE_LIMIT_MAX_REQUESTS || 120));
@@ -629,7 +629,7 @@ async function sendEmailViaSes(to, subject, textBody, htmlBody, attachments) {
     // For attachments, we need to use raw email or SendGrid
     // This is a simplified version for text emails
     const command = new SendEmailCommand({
-      Source: process.env.SES_FROM_EMAIL || 'noreply@nolimitcap.net',
+      Source: process.env.SES_FROM_EMAIL || 'info@nolimitcap.net',
       Destination: {
         ToAddresses: Array.isArray(to) ? to : [to],
       },
@@ -750,7 +750,7 @@ async function emailApplicationPdf(record, pdfData) {
     '',
     '---',
     'No Limit Capital',
-    'www.nolimitcap.com',
+    'www.nolimitcap.net',
   ].join('\n');
 
   const htmlBody = `
@@ -780,7 +780,7 @@ async function emailApplicationPdf(record, pdfData) {
         <p style="margin-top: 20px; color: #64748b;">Please see the attached PDF for complete application details.</p>
       </div>
       <div style="background: #1e293b; padding: 15px; text-align: center; color: #94a3b8;">
-        <p style="margin: 0;">No Limit Capital | www.nolimitcap.com</p>
+        <p style="margin: 0;">No Limit Capital | www.nolimitcap.net</p>
       </div>
     </div>
   `;

@@ -163,9 +163,8 @@ async function generateApplicationPdfFromTemplate(record, options = {}) {
   });
 
   form.updateFieldAppearances(helvetica);
-  if (options.flatten !== false) {
-    form.flatten();
-  }
+  // Don't flatten - keep form fields editable
+  // To flatten (make non-editable), pass options.flatten = true
 
   const output = await pdfDoc.save();
   return Buffer.from(output);

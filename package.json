@@ -4,8 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "cd server && node server.js",
-    "start": "cd server && node server.js",
-    "build": "cd server && npm install --production"
+    "start": "cd server && node server.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.600.0",

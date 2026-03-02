@@ -530,8 +530,11 @@ function requireClientAuth(req, res, next) {
 async function generateApplicationPdf(record) {
   await fs.mkdir(GENERATED_PDF_DIR, { recursive: true });
 
-  const safeDate = (record.createdAt || new Date().toISOString()).replace(/[:.]/g, '-');
-  const fileName = `funding-request-${safeDate}-${record.id}.pdf`;
+  const safeDate = (record.createdAt || new Date().toISOString()).split('T')[0];
+  const fullName = `${record.first_name || ''} ${record.last_name || ''}`.trim()
+    .replace(/[^a-zA-Z0-9 ]/g, '')
+    .replace(/\s+/g, '_') || 'applicant';
+  const fileName = `${fullName}_funding_request_${safeDate}.pdf`;
   const filePath = path.join(GENERATED_PDF_DIR, fileName);
 
   let buffer = null;

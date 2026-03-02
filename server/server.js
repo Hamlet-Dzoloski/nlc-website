@@ -619,7 +619,7 @@ const smtpMailer = createSmtpMailer();
 /**
  * Send email using AWS SES
  */
-async function sendEmailViaSes(to, subject, textBody, htmlBody, attachments) {
+async function sendEmailViaSes(to, subject, textBody, htmlBody, attachments, from) {
   if (!sesClient) {
     return { status: 'skipped', reason: 'SES not configured' };
   }
@@ -629,7 +629,7 @@ async function sendEmailViaSes(to, subject, textBody, htmlBody, attachments) {
     // For attachments, we need to use raw email or SendGrid
     // This is a simplified version for text emails
     const command = new SendEmailCommand({
-      Source: process.env.SES_FROM_EMAIL || 'info@nolimitcap.net',
+      Source: from || process.env.SES_FROM_EMAIL || 'info@nolimitcap.net',
       Destination: {
         ToAddresses: Array.isArray(to) ? to : [to],
       },
@@ -653,7 +653,7 @@ async function sendEmailViaSes(to, subject, textBody, htmlBody, attachments) {
 /**
  * Send email using SendGrid
  */
-async function sendEmailViaSendGrid(to, subject, textBody, htmlBody, attachments) {
+async function sendEmailViaSendGrid(to, subject, textBody, htmlBody, attachments, from) {
   if (!process.env.SENDGRID_API_KEY) {
     return { status: 'skipped', reason: 'SendGrid not configured' };
   }
@@ -661,7 +661,7 @@ async function sendEmailViaSendGrid(to, subject, textBody, htmlBody, attachments
   try {
     const msg = {
       to: Array.isArray(to) ? to : [to],
-      from: process.env.SENDGRID_FROM_EMAIL || 'noreply@nolimitcap.net',
+      from: from || process.env.SENDGRID_FROM_EMAIL || 'noreply@nolimitcap.net',
       subject,
       text: textBody,
       html: htmlBody || `<p>${textBody}</p>`,
@@ -687,14 +687,14 @@ async function sendEmailViaSendGrid(to, subject, textBody, htmlBody, attachments
 /**
  * Send email using SMTP (fallback)
  */
-async function sendEmailViaSmtp(to, subject, textBody, htmlBody, attachments) {
+async function sendEmailViaSmtp(to, subject, textBody, htmlBody, attachments, from) {
   if (!smtpMailer) {
     return { status: 'skipped', reason: 'SMTP not configured' };
   }
 
   try {
     const info = await smtpMailer.sendMail({
-      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      from: from || process.env.SMTP_FROM || process.env.SMTP_USER,
       to: Array.isArray(to) ? to.join(', ') : to,
       subject,
       text: textBody,
@@ -809,6 +809,115 @@ async function emailApplicationPdf(record, pdfData) {
   result = await sendEmailViaSes(recipients, subject, textBody, htmlBody, []);
   if (result.status === 'sent') {
     return { ...result, provider: 'ses', note: 'Sent without attachment' };
+  }
+
+  return { status: 'failed', reason: 'All email providers failed' };
+}
+
+/**
+ * Send confirmation email to the applicant after successful submission
+ */
+async function sendApplicantConfirmationEmail(record) {
+  const applicantEmail = record.email;
+  if (!applicantEmail) {
+    return { status: 'skipped', reason: 'No applicant email' };
+  }
+
+  const applicantName = `${record.first_name || ''} ${record.last_name || ''}`.trim() || 'Applicant';
+  const subject = 'Application Received - No Limit Capital';
+
+  const textBody = [
+    `Dear ${applicantName},`,
+    '',
+    'Thank you for submitting your funding application with No Limit Capital!',
+    '',
+    'We have received your application and our team is reviewing it now.',
+    'You can expect to hear back from us within 24 hours.',
+    '',
+    'APPLICATION DETAILS:',
+    `Application ID: ${record.id}`,
+    `Requested Amount: ${record.loan_amount || 'N/A'}`,
+    `Funding Timeline: ${record.funding_timeline || 'N/A'}`,
+    `Business Name: ${record.legal_business_name || record.business_dba || 'N/A'}`,
+    '',
+    'If you have any questions in the meantime, feel free to reach out:',
+    'Email: info@nolimitcap.net',
+    'Website: www.nolimitcap.net',
+    '',
+    'Best regards,',
+    'The No Limit Capital Team',
+  ].join('\n');
+
+  const htmlBody = `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+      <div style="background: linear-gradient(135deg, #1a56db, #1e3a8a); padding: 32px 24px; text-align: center; border-radius: 8px 8px 0 0;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700;">No Limit Capital</h1>
+        <p style="color: #fbbf24; margin: 8px 0 0 0; font-size: 14px; letter-spacing: 1px; text-transform: uppercase;">Application Received</p>
+      </div>
+
+      <div style="padding: 32px 24px; background: #f8fafc;">
+        <p style="color: #1e293b; font-size: 16px; line-height: 1.6; margin: 0 0 16px 0;">Dear <strong>${applicantName}</strong>,</p>
+        <p style="color: #475569; font-size: 15px; line-height: 1.6; margin: 0 0 24px 0;">Thank you for submitting your funding application with No Limit Capital! We have received your application and our team is already reviewing it.</p>
+
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 0 0 24px 0;">
+          <h2 style="color: #1e293b; font-size: 16px; margin: 0 0 16px 0; border-bottom: 2px solid #1a56db; padding-bottom: 8px;">Your Application Summary</h2>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Application ID</td>
+              <td style="padding: 8px 0; color: #1e293b; font-size: 14px; font-weight: 600; text-align: right;">${record.id}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #64748b; font-size: 14px; border-top: 1px solid #f1f5f9;">Requested Amount</td>
+              <td style="padding: 8px 0; color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; border-top: 1px solid #f1f5f9;">${record.loan_amount || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #64748b; font-size: 14px; border-top: 1px solid #f1f5f9;">Funding Timeline</td>
+              <td style="padding: 8px 0; color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; border-top: 1px solid #f1f5f9;">${record.funding_timeline || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #64748b; font-size: 14px; border-top: 1px solid #f1f5f9;">Business Name</td>
+              <td style="padding: 8px 0; color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; border-top: 1px solid #f1f5f9;">${record.legal_business_name || record.business_dba || 'N/A'}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="background: #eff6ff; border-left: 4px solid #1a56db; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 0 0 24px 0;">
+          <h3 style="color: #1e293b; font-size: 15px; margin: 0 0 8px 0;">What Happens Next?</h3>
+          <ol style="color: #475569; font-size: 14px; line-height: 1.8; margin: 0; padding-left: 20px;">
+            <li>Our funding specialists will review your application</li>
+            <li>You will receive a pre-approval decision within <strong>24 hours</strong></li>
+            <li>Once approved, funds can be deposited as soon as the <strong>next business day</strong></li>
+          </ol>
+        </div>
+
+        <p style="color: #475569; font-size: 14px; line-height: 1.6; margin: 0;">If you have any questions, feel free to reach out to us at <a href="mailto:info@nolimitcap.net" style="color: #1a56db; text-decoration: none; font-weight: 600;">info@nolimitcap.net</a>.</p>
+      </div>
+
+      <div style="background: #1e293b; padding: 20px 24px; text-align: center; border-radius: 0 0 8px 8px;">
+        <p style="color: #94a3b8; font-size: 13px; margin: 0;">No Limit Capital | <a href="https://www.nolimitcap.net" style="color: #94a3b8; text-decoration: none;">www.nolimitcap.net</a></p>
+        <p style="color: #64748b; font-size: 11px; margin: 8px 0 0 0;">This is an automated confirmation. Please do not reply to this email.</p>
+      </div>
+    </div>
+  `;
+
+  const fromAddress = 'info@nolimitcap.net';
+
+  // Try SendGrid first
+  let result = await sendEmailViaSendGrid(applicantEmail, subject, textBody, htmlBody, [], fromAddress);
+  if (result.status === 'sent') {
+    return { ...result, provider: 'sendgrid' };
+  }
+
+  // Fall back to SMTP
+  result = await sendEmailViaSmtp(applicantEmail, subject, textBody, htmlBody, [], fromAddress);
+  if (result.status === 'sent') {
+    return { ...result, provider: 'smtp' };
+  }
+
+  // Last resort: SES
+  result = await sendEmailViaSes(applicantEmail, subject, textBody, htmlBody, [], fromAddress);
+  if (result.status === 'sent') {
+    return { ...result, provider: 'ses' };
   }
 
   return { status: 'failed', reason: 'All email providers failed' };
@@ -1246,26 +1355,34 @@ app.post('/api/apply', applyRateLimiter, upload.array('bank_statements', 10), as
   }
 
   // Try Supabase first
+  let storageType = 'none';
   const supabaseResult = await saveApplicationToSupabase(record);
   if (supabaseResult.status === 'saved') {
-    return res.json({
-      ok: true,
-      id: record.id,
-      crmStatus: record.crmStatus,
-      pdfStatus: record.pdfStatus,
-      emailStatus: record.emailStatus,
-      storage: 'supabase',
-    });
+    storageType = 'supabase';
+  } else {
+    // Fall back to local storage
+    try {
+      const applications = await readJsonArray(APPLICATIONS_FILE);
+      applications.push(record);
+      await writeJsonArray(APPLICATIONS_FILE, applications);
+      storageType = 'local';
+    } catch (error) {
+      return res.status(500).json({ ok: false, error: 'Failed to store application' });
+    }
   }
 
-  // Fall back to local storage
-  try {
-    const applications = await readJsonArray(APPLICATIONS_FILE);
-    applications.push(record);
-    await writeJsonArray(APPLICATIONS_FILE, applications);
-  } catch (error) {
-    return res.status(500).json({ ok: false, error: 'Failed to store application' });
-  }
+  // Send confirmation email to the applicant (fire-and-forget, don't block the response)
+  sendApplicantConfirmationEmail(record)
+    .then((confirmResult) => {
+      if (confirmResult.status === 'sent') {
+        console.log(`Applicant confirmation email sent to ${record.email} via ${confirmResult.provider}`);
+      } else {
+        console.warn(`Applicant confirmation email failed for ${record.email}:`, confirmResult.reason || confirmResult.error || 'unknown');
+      }
+    })
+    .catch((err) => {
+      console.error('Applicant confirmation email error:', err.message);
+    });
 
   return res.json({
     ok: true,
@@ -1273,7 +1390,7 @@ app.post('/api/apply', applyRateLimiter, upload.array('bank_statements', 10), as
     crmStatus: record.crmStatus,
     pdfStatus: record.pdfStatus,
     emailStatus: record.emailStatus,
-    storage: 'local',
+    storage: storageType,
   });
 });
 

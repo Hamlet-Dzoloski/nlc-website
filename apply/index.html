@@ -484,11 +484,33 @@
                        <!-- LEFT: Owner #1 -->
                        <div class="auth-sig-col">
                          <div class="auth-col-header">Owner #1 <span class="auth-required">*</span></div>
-                         <label class="field">
-                           <span>Signature *</span>
-                           <input type="text" name="signature" placeholder="Type full name as signature" required />
-                         </label>
-                         <label class="field">
+
+                         <!-- Signature widget #1 -->
+                         <div class="sig-widget" id="sig-widget-1">
+                           <div class="sig-tabs">
+                             <button type="button" class="sig-tab active" data-sig-tab="draw" data-target="1">✏️ Draw</button>
+                             <button type="button" class="sig-tab" data-sig-tab="upload" data-target="1">📁 Upload</button>
+                           </div>
+                           <!-- Draw panel -->
+                           <div class="sig-panel sig-panel-draw" data-panel="draw-1">
+                             <canvas class="sig-canvas" id="sig-canvas-1" width="320" height="100"></canvas>
+                             <div class="sig-canvas-hint">Draw your signature above</div>
+                             <button type="button" class="sig-clear-btn" data-clear="1">Clear</button>
+                           </div>
+                           <!-- Upload panel -->
+                           <div class="sig-panel sig-panel-upload" data-panel="upload-1" hidden>
+                             <label class="sig-upload-label">
+                               <span>Click to upload signature image</span>
+                               <input type="file" class="sig-file-input" data-file-target="1" accept="image/*" />
+                             </label>
+                             <img class="sig-preview" id="sig-preview-1" alt="Signature preview" hidden />
+                           </div>
+                           <!-- Hidden field carries base64 to server -->
+                           <input type="hidden" name="signature" id="sig-value-1" required />
+                           <div class="sig-error" id="sig-error-1" hidden>Please provide a signature.</div>
+                         </div>
+
+                         <label class="field" style="margin-top:12px;">
                            <span>Date *</span>
                            <input type="date" name="application_date" required />
                          </label>
@@ -500,11 +522,29 @@
                        <!-- RIGHT: Owner #2 -->
                        <div class="auth-sig-col">
                          <div class="auth-col-header">Owner #2 <span class="auth-optional">(if applicable)</span></div>
-                         <label class="field">
-                           <span>Signature</span>
-                           <input type="text" name="signature_additional" placeholder="Type full name as signature" />
-                         </label>
-                         <label class="field">
+
+                         <!-- Signature widget #2 -->
+                         <div class="sig-widget" id="sig-widget-2">
+                           <div class="sig-tabs">
+                             <button type="button" class="sig-tab active" data-sig-tab="draw" data-target="2">✏️ Draw</button>
+                             <button type="button" class="sig-tab" data-sig-tab="upload" data-target="2">📁 Upload</button>
+                           </div>
+                           <div class="sig-panel sig-panel-draw" data-panel="draw-2">
+                             <canvas class="sig-canvas" id="sig-canvas-2" width="320" height="100"></canvas>
+                             <div class="sig-canvas-hint">Draw your signature above</div>
+                             <button type="button" class="sig-clear-btn" data-clear="2">Clear</button>
+                           </div>
+                           <div class="sig-panel sig-panel-upload" data-panel="upload-2" hidden>
+                             <label class="sig-upload-label">
+                               <span>Click to upload signature image</span>
+                               <input type="file" class="sig-file-input" data-file-target="2" accept="image/*" />
+                             </label>
+                             <img class="sig-preview" id="sig-preview-2" alt="Signature preview" hidden />
+                           </div>
+                           <input type="hidden" name="signature_additional" id="sig-value-2" />
+                         </div>
+
+                         <label class="field" style="margin-top:12px;">
                            <span>Date</span>
                            <input type="date" name="application_date_additional" />
                          </label>
@@ -516,6 +556,7 @@
                        <span>I agree to the Application and Credit Profile Agreement. *</span>
                      </label>
                    </div>
+
 
                 </div><!-- /apply-steps -->
 
@@ -613,7 +654,236 @@
       </div>
     </div>
 
+    <!-- Signature Pad library -->
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+
+    <!-- Signature widget styles -->
+    <style>
+      .sig-widget {
+        border: 1.5px solid #cbd5e1;
+        border-radius: 10px;
+        overflow: hidden;
+        background: #fff;
+      }
+      .sig-tabs {
+        display: flex;
+        border-bottom: 1.5px solid #e2e8f0;
+      }
+      .sig-tab {
+        flex: 1;
+        padding: 8px 0;
+        font-size: 13px;
+        font-weight: 500;
+        color: #64748b;
+        background: #f8fafc;
+        border: none;
+        cursor: pointer;
+        transition: background .15s, color .15s;
+      }
+      .sig-tab.active {
+        background: #fff;
+        color: #1a56db;
+        border-bottom: 2px solid #1a56db;
+        margin-bottom: -1.5px;
+      }
+      .sig-panel { padding: 10px; }
+      .sig-canvas {
+        display: block;
+        width: 100%;
+        height: 100px;
+        border: 1px dashed #cbd5e1;
+        border-radius: 6px;
+        cursor: crosshair;
+        background: #fafbff;
+        touch-action: none;
+      }
+      .sig-canvas-hint {
+        font-size: 11px;
+        color: #94a3b8;
+        text-align: center;
+        margin-top: 4px;
+      }
+      .sig-clear-btn {
+        margin-top: 6px;
+        font-size: 12px;
+        color: #ef4444;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        text-decoration: underline;
+      }
+      .sig-upload-label {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100px;
+        border: 1px dashed #cbd5e1;
+        border-radius: 6px;
+        cursor: pointer;
+        background: #fafbff;
+        color: #64748b;
+        font-size: 13px;
+        gap: 6px;
+        transition: background .15s;
+      }
+      .sig-upload-label:hover { background: #eff6ff; }
+      .sig-file-input { display: none; }
+      .sig-preview {
+        display: block;
+        max-height: 80px;
+        max-width: 100%;
+        margin: 8px auto 0;
+        border-radius: 4px;
+        border: 1px solid #e2e8f0;
+      }
+      .sig-error { color: #ef4444; font-size: 12px; margin-top: 4px; }
+    </style>
+
+    <script>
+    (function () {
+      'use strict';
+
+      const pads = {};  // { '1': SignaturePad, '2': SignaturePad }
+
+      function initPad(id) {
+        const canvas = document.getElementById('sig-canvas-' + id);
+        if (!canvas || pads[id]) return;
+
+        const pad = new SignaturePad(canvas, {
+          penColor: '#000',
+          minWidth: 1.5,
+          maxWidth: 3,
+        });
+        pads[id] = pad;
+
+        // Resize canvas to actual CSS pixels (avoid blur on HiDPI)
+        function resizeCanvas() {
+          const ratio = Math.max(window.devicePixelRatio || 1, 1);
+          const w = canvas.offsetWidth;
+          const h = canvas.offsetHeight;
+          canvas.width  = w * ratio;
+          canvas.height = h * ratio;
+          canvas.getContext('2d').scale(ratio, ratio);
+          pad.clear();
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // On every stroke end, push base64 into hidden input
+        pad.addEventListener('endStroke', () => syncDraw(id));
+      }
+
+      function syncDraw(id) {
+        const pad = pads[id];
+        if (!pad) return;
+        const hidden = document.getElementById('sig-value-' + id);
+        if (!hidden) return;
+        hidden.value = pad.isEmpty() ? '' : pad.toDataURL('image/png');
+      }
+
+      function switchTab(id, mode) {
+        const drawPanel   = document.querySelector('[data-panel="draw-' + id + '"]');
+        const uploadPanel = document.querySelector('[data-panel="upload-' + id + '"]');
+        const tabs        = document.querySelectorAll('[data-target="' + id + '"]');
+
+        tabs.forEach(t => t.classList.toggle('active', t.dataset.sigTab === mode));
+
+        if (mode === 'draw') {
+          drawPanel.hidden  = false;
+          uploadPanel.hidden = true;
+          initPad(id);
+          syncDraw(id);
+        } else {
+          drawPanel.hidden  = true;
+          uploadPanel.hidden = false;
+          // If there's already an uploaded preview, keep the hidden value
+        }
+      }
+
+      document.addEventListener('click', function (e) {
+        // Tab switching
+        const tabBtn = e.target.closest('[data-sig-tab]');
+        if (tabBtn) {
+          switchTab(tabBtn.dataset.target, tabBtn.dataset.sigTab);
+          return;
+        }
+        // Clear button
+        const clearBtn = e.target.closest('[data-clear]');
+        if (clearBtn) {
+          const id = clearBtn.dataset.clear;
+          if (pads[id]) pads[id].clear();
+          const hidden = document.getElementById('sig-value-' + id);
+          if (hidden) hidden.value = '';
+          const err = document.getElementById('sig-error-' + id);
+          if (err) err.hidden = true;
+        }
+      });
+
+      // File upload → read as data URL
+      document.addEventListener('change', function (e) {
+        const fileInput = e.target.closest('.sig-file-input');
+        if (!fileInput) return;
+        const id      = fileInput.dataset.fileTarget;
+        const file    = fileInput.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+          const dataUrl = ev.target.result;
+          const hidden  = document.getElementById('sig-value-' + id);
+          if (hidden) hidden.value = dataUrl;
+          const preview = document.getElementById('sig-preview-' + id);
+          if (preview) { preview.src = dataUrl; preview.hidden = false; }
+        };
+        reader.readAsDataURL(file);
+      });
+
+      // On form submit: validate Owner #1 signature is present
+      document.addEventListener('submit', function (e) {
+        const form = e.target.closest('form[data-form="apply"]');
+        if (!form) return;
+
+        ['1'].forEach(id => {  // Only #1 is required
+          // Make sure draw pad data is captured
+          const pad = pads[id];
+          if (pad) syncDraw(id);
+
+          const hidden = document.getElementById('sig-value-' + id);
+          const err    = document.getElementById('sig-error-' + id);
+          if (hidden && !hidden.value) {
+            if (err) err.hidden = false;
+            e.preventDefault();
+            // Scroll to signature widget
+            const widget = document.getElementById('sig-widget-' + id);
+            if (widget) widget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          } else if (err) {
+            err.hidden = true;
+          }
+        });
+      }, true);  // capture phase so it runs before main.js
+
+      // Auto-init both pads when Step 4 becomes visible
+      const observer = new MutationObserver(function () {
+        ['1', '2'].forEach(id => {
+          const canvas = document.getElementById('sig-canvas-' + id);
+          if (canvas && canvas.offsetWidth > 0 && !pads[id]) {
+            initPad(id);
+          }
+        });
+      });
+      observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['hidden'] });
+
+      // Also try init on DOMContentLoaded in case step 4 is already visible
+      document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(() => { ['1','2'].forEach(initPad); }, 100);
+      });
+    })();
+    </script>
+
     <script src="/assets/js/config.js"></script>
     <script src="/assets/js/main.js"></script>
   </body>
 </html>
+

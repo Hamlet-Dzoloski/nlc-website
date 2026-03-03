@@ -489,267 +489,105 @@ function buildSections(record) {
     {
       title: "BUSINESS INFORMATION",
       rows: [
-        // Row 1: Legal Name | DBA Name
+        // Row 1: Legal Name | DBA | Entity Type
         [
-          field(
-            "legal_business_name",
-            "Business Legal Name",
-            record.legal_business_name,
-            8,
-            { forceRequired: true },
-          ),
-          field("business_dba", "Business DBA Name", record.business_dba, 8),
+          field("legal_business_name", "Business Legal Name", record.legal_business_name, 9, { forceRequired: true }),
+          field("business_dba", "DBA Name", record.business_dba, 7),
         ],
-        // Row 2: State of Inc | EIN#
+        // Row 2: Entity Type | State of Inc | EIN | Funding Company
         [
-          field(
-            "state_of_incorporation",
-            "State of Incorporation",
-            record.state_of_incorporation,
-            8,
-          ),
-          field("business_tax_id", "EIN #", record.business_tax_id, 8, { forceRequired: true }),
+          field("legal_entity", "Business Entity Type", record.legal_entity, 5),
+          field("state_of_incorporation", "State of Inc.", record.state_of_incorporation, 4),
+          field("business_tax_id", "EIN #", record.business_tax_id, 4, { forceRequired: true }),
+          field("funding_company", "Funding Company", record.funding_company, 3),
         ],
-        // Row 3: Type of Business Entity
+        // Row 3: Business Address (full width)
         [
-          field("legal_entity", "Type of Business Entity", record.legal_entity, 16),
+          field("business_address", "Business Physical Address", record.business_address, 16, { forceRequired: true }),
         ],
-        // Row 4: Address
+        // Row 4: City | State | Zip | Business Phone
         [
-          field(
-            "business_address",
-            "Business Physical Address",
-            record.business_address,
-            16,
-          ),
+          field("business_city", "City", record.business_city, 4),
+          field("business_state", "State", record.business_state, 3),
+          field("business_zip", "Zip", record.business_zip, 3),
+          field("business_phone", "Business Phone", record.business_phone, 6),
         ],
-        // Row 5: City | State | Zip
+        // Row 5: Contact Name | Contact # | Email
         [
-          field("business_city", "City", record.business_city, 5),
-          field("business_state", "State", record.business_state, 5),
-          field("business_zip", "Zip Code", record.business_zip, 6),
+          field("first_name", "Preferred Contact Name", preferredContact, 6, { forceRequired: true }),
+          field("contact_number", "Contact #", record.contact_number, 5, { forceRequired: true }),
+          field("email", "Email", record.email, 5, { forceRequired: true }),
         ],
-        // Row 6: Business Phone | Preferred Contact Name
+        // Row 6: Industry | Website | Start Date
         [
-          field("business_phone", "Business Phone", record.business_phone, 8),
-          field("first_name", "Preferred Contact Name", preferredContact, 8, {
-            forceRequired: true,
-          }),
+          field("industry", "Industry Type", record.industry, 6, { forceRequired: true }),
+          field("business_website", "Business Website", record.business_website, 5),
+          field("business_start_date", "Business Start Date", record.business_start_date, 5),
         ],
-        // Row 7: Contact # | Email
+        // Row 7: Loan Amount | Timeline | Credit Score
         [
-          field("contact_number", "Preferred Contact #", record.contact_number, 8),
-          field("email", "Email", record.email, 8),
+          field("loan_amount", "Funding Amount Requested", record.loan_amount, 6, { forceRequired: true }),
+          field("funding_timeline", "Funding Timeline", record.funding_timeline, 5),
+          field("credit_score", "Credit Score", record.credit_score, 5),
         ],
-        // Row 8: Industry Type | Business Website
+        // Row 8: Gross Sales | Monthly Deposits | Daily Balance
         [
-          field("industry", "Industry Type", record.industry, 8),
-          field("business_website", "Business Website", record.business_website, 8),
+          field("gross_annual_sales", "Gross Annual Sales", record.gross_annual_sales, 5, { forceRequired: true }),
+          field("avg_monthly_deposits", "Avg Monthly Deposits", record.avg_monthly_deposits, 5, { forceRequired: true }),
+          field("avg_daily_balance", "Avg Daily Balance", record.avg_daily_balance, 6, { forceRequired: true }),
         ],
-        // Row 9: Funding Amount | Funding Timeline
-        [
-          field(
-            "loan_amount",
-            "Funding Amount Requesting",
-            record.loan_amount,
-            8,
-            { forceRequired: true },
-          ),
-          field(
-            "funding_timeline",
-            "Funding Timeline",
-            record.funding_timeline,
-            8,
-          ),
-        ],
-        // Row 10: Gross Annual Sales | Avg Monthly Deposits | Credit Score
-        [
-          field(
-            "gross_annual_sales",
-            "Gross Annual Sales",
-            record.gross_annual_sales,
-            5,
-          ),
-          field(
-            "avg_monthly_deposits",
-            "Avg Monthly Deposits",
-            record.avg_monthly_deposits,
-            5,
-          ),
-          field("credit_score", "Credit Score", record.credit_score, 6),
-        ],
-        // Row 11: Business Start Date | Avg Daily Balance
-        [
-          field(
-            "business_start_date",
-            "Business Start Date",
-            record.business_start_date,
-            8,
-          ),
-          field(
-            "avg_daily_balance",
-            "Average Daily Balance",
-            record.avg_daily_balance,
-            8,
-          ),
-        ],
-        // Row 13: Use of Proceeds | Credit Card Processor
+        // Row 9: Use of Proceeds | Credit Card Processor
         [
           field("loan_use", "Use of Proceeds", record.loan_use, 8),
-          field(
-            "credit_card_processor",
-            "Credit Card Processor",
-            record.credit_card_processor,
-            8,
-          ),
+          field("credit_card_processor", "Credit Card Processor", record.credit_card_processor, 8),
         ],
-        // Row 14: Any Outstanding Loan Balances? | If YES, List Balance
+        // Row 10: Outstanding Balance? | Balance | Seasonal? | Peak Months | Bankruptcies? | Liens?
         [
-          field(
-            "has_other_financing",
-            "Any Outstanding Loan Balances?",
-            toYesNo(record.has_other_financing),
-            8,
-          ),
-          field(
-            "outstanding_balance",
-            "If YES, List Balance",
-            record.outstanding_balance,
-            8,
-          ),
-        ],
-        // Row 15: Funding Company
-        [
-          field(
-            "funding_company",
-            "Funding Company",
-            record.funding_company,
-            16,
-          ),
-        ],
-        // Row 16: Seasonal Business? | If YES, List Peak Months
-        [
-          field(
-            "seasonal_business",
-            "Seasonal Business?",
-            toYesNo(record.seasonal_business),
-            8,
-          ),
-          field("peak_months", "If YES, List Peak Months", record.peak_months, 8),
-        ],
-        // Row 17: Any Open Bankruptcies? | Any Judgements / Liens?
-        [
-          field(
-            "has_open_bankruptcies",
-            "Any Open Bankruptcies?",
-            toYesNo(record.has_open_bankruptcies),
-            8,
-          ),
-          field(
-            "has_judgements_liens",
-            "Any Judgements / Liens?",
-            toYesNo(record.has_judgements_liens),
-            8,
-          ),
+          field("has_other_financing", "Outstndg Loan Bal?", toYesNo(record.has_other_financing), 3, { forceRequired: true }),
+          field("outstanding_balance", "Balance Amount", record.outstanding_balance, 3),
+          field("seasonal_business", "Seasonal Biz?", toYesNo(record.seasonal_business), 2, { forceRequired: true }),
+          field("peak_months", "Peak Months", record.peak_months, 3),
+          field("has_open_bankruptcies", "Bankruptcies?", toYesNo(record.has_open_bankruptcies), 2, { forceRequired: true }),
+          field("has_judgements_liens", "Liens/Judgmts?", toYesNo(record.has_judgements_liens), 3, { forceRequired: true }),
         ],
       ],
     },
     {
       title: "OWNERSHIP INFORMATION",
       rows: [
-        // Owner #1 Row 1: First Name | Last Name | SSN | DOB
+        // Owner #1 Row 1: First | Last | SSN | DOB | Ownership%
         [
-          field("owner_first_name", "First Name", record.owner_first_name, 4, {
-            forceRequired: true,
-          }),
-          field("owner_last_name", "Last Name", record.owner_last_name, 4, {
-            forceRequired: true,
-          }),
+          field("owner_first_name", "First Name", record.owner_first_name, 3, { forceRequired: true }),
+          field("owner_last_name", "Last Name", record.owner_last_name, 3, { forceRequired: true }),
           field("owner_ssn", "SSN", record.owner_ssn, 4, { forceRequired: true }),
-          field("owner_dob", "DOB", record.owner_dob, 4, { forceRequired: true }),
+          field("owner_dob", "DOB", record.owner_dob, 3, { forceRequired: true }),
+          field("owner_ownership", "Ownership %", record.owner_ownership, 3, { forceRequired: true }),
         ],
-        // Owner #1 Row 2: Address | City | State | Zip
+        // Owner #1 Row 2: Address | City | State | Zip | Phone | Email
         [
-          field("owner_address", "Street Address", record.owner_address, 8),
-          field("owner_city", "City", record.owner_city, 3),
+          field("owner_address", "Street Address", record.owner_address, 5),
+          field("owner_city", "City", record.owner_city, 2),
           field("owner_state", "State", record.owner_state, 2),
-          field("owner_zip", "Zip Code", record.owner_zip, 3),
+          field("owner_zip", "Zip", record.owner_zip, 2),
+          field("owner_contact", "Phone", record.owner_contact, 2),
+          field("owner_email", "Email", record.owner_email, 3),
         ],
-        // Owner #1 Row 3: Home Phone | Ownership % | Email
+        // Owner #2 Row 1: First | Last | SSN | DOB | Ownership%
         [
-          field("owner_contact", "Home Phone", record.owner_contact, 4),
-          field("owner_ownership", "Ownership %", record.owner_ownership, 4),
-          field("owner_email", "E-mail", record.owner_email, 8),
+          field("additional_owner_first_name", "First Name", record.additional_owner_first_name, 3),
+          field("additional_owner_last_name", "Last Name", record.additional_owner_last_name, 3),
+          field("additional_owner_ssn", "SSN", record.additional_owner_ssn, 4),
+          field("additional_owner_dob", "DOB", record.additional_owner_dob, 3),
+          field("additional_owner_ownership", "Ownership %", record.additional_owner_ownership, 3),
         ],
-        // Owner #2 Row 1: First Name | Last Name | SSN | DOB
+        // Owner #2 Row 2: Address | City | State | Zip | Phone | Email
         [
-          field(
-            "additional_owner_first_name",
-            "First Name",
-            record.additional_owner_first_name,
-            4,
-          ),
-          field(
-            "additional_owner_last_name",
-            "Last Name",
-            record.additional_owner_last_name,
-            4,
-          ),
-          field(
-            "additional_owner_ssn",
-            "SSN",
-            record.additional_owner_ssn,
-            4,
-          ),
-          field(
-            "additional_owner_dob",
-            "DOB",
-            record.additional_owner_dob,
-            4,
-          ),
-        ],
-        // Owner #2 Row 2: Address | City | State | Zip
-        [
-          field(
-            "additional_owner_address",
-            "Street Address",
-            record.additional_owner_address,
-            8,
-          ),
-          field(
-            "additional_owner_city",
-            "City",
-            record.additional_owner_city,
-            3,
-          ),
-          field(
-            "additional_owner_state",
-            "State",
-            record.additional_owner_state,
-            2,
-          ),
-          field("additional_owner_zip", "Zip Code", record.additional_owner_zip, 3),
-        ],
-        // Owner #2 Row 3: Home Phone | Ownership % | Email
-        [
-          field(
-            "additional_owner_contact",
-            "Home Phone",
-            record.additional_owner_contact,
-            4,
-          ),
-          field(
-            "additional_owner_ownership",
-            "Ownership %",
-            record.additional_owner_ownership,
-            4,
-          ),
-          field(
-            "additional_owner_email",
-            "E-mail",
-            record.additional_owner_email,
-            8,
-          ),
+          field("additional_owner_address", "Street Address", record.additional_owner_address, 5),
+          field("additional_owner_city", "City", record.additional_owner_city, 2),
+          field("additional_owner_state", "State", record.additional_owner_state, 2),
+          field("additional_owner_zip", "Zip", record.additional_owner_zip, 2),
+          field("additional_owner_contact", "Phone", record.additional_owner_contact, 2),
+          field("additional_owner_email", "Email", record.additional_owner_email, 3),
         ],
       ],
     },
@@ -818,13 +656,13 @@ function buildSections(record) {
 
 function createLayoutConfig(scale = 1, options = {}) {
   return {
-    rowHeight: Math.max(15, Math.floor(26 * scale)),
+    rowHeight: Math.max(20, Math.floor(34 * scale)),
     sectionHeaderHeight: Math.max(11, Math.floor(15 * scale)),
     sectionGap: Math.max(3, Math.floor(6 * scale)),
-    labelFontSize: Math.max(5.2, 6.4 * scale),
-    valueFontSize: Math.max(6.9, 8.4 * scale),
+    labelFontSize: Math.max(5.5, 7.0 * scale),
+    valueFontSize: Math.max(7.5, 10.0 * scale),
     sectionFontSize: Math.max(7.2, 8.7 * scale),
-    valueOffsetY: Math.max(10, Math.floor(15 * scale)),
+    valueOffsetY: Math.max(12, Math.floor(18 * scale)),
     legendFontSize: Math.max(5.4, 6.6 * scale),
     legendHeight: Math.max(7, Math.floor(10 * scale)),
 

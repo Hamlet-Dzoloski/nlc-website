@@ -33,6 +33,7 @@ function createLayoutConfig(scale = 1) {
     authorizationLineLabelFontSize:  Math.max(6.0, 7.0 * scale),
     authorizationLineValueFontSize:  Math.max(6.2, 7.1 * scale),
     authorizationLineGap:            Math.max(13, Math.floor(18 * scale)),
+    authorizationSignatureExtraGap:  Math.max(14, Math.floor(20 * scale)),
     authorizationLineBaselineOffset: Math.max(8,  Math.floor(11 * scale)),
     authorizationOwnerGap:           Math.max(2,  Math.floor(4  * scale)),
     authorizationColumnGap:          Math.max(8,  Math.floor(12 * scale)),
@@ -47,7 +48,8 @@ function estimateBodyHeight(sections, config) {
     config.authorizationLabelGap +
     config.authorizationTextHeight +
     config.authorizationAfterTermsGap +
-    config.authorizationLineGap * 4 +
+    config.authorizationLineGap * 3 +
+    config.authorizationSignatureExtraGap +
     config.authorizationOwnerGap * 2;
   return (
     sections.length * config.sectionHeaderHeight +
@@ -176,22 +178,26 @@ function computeFieldCoords(pageWidth = 612, margin = 24, logoScale = 0.75) {
   const fHeight = Math.max(10, lineH - 2);
 
   const authRows = [
-    { left: 'sig_owner1_name',  right: 'sig_owner2_name',            lf: 0.36, shift: 2 },
-    { left: 'signature',        right: 'signature_additional',        lf: 0.30, shift: 2 },
-    { left: 'application_date', right: 'application_date_additional', lf: 0.11, shift: 0 },
+    { left: 'sig_owner1_name',  right: 'sig_owner2_name',            lf: 0.28, shift: 0 },
+    { left: 'signature',        right: 'signature_additional',        lf: 0.24, shift: 0, extraGapBefore: config.authorizationSignatureExtraGap },
+    { left: 'application_date', right: 'application_date_additional', lf: 0.08, shift: 0 },
   ];
 
-  authRows.forEach(({ left: leftName, right: rightName, lf, shift }) => {
+  authRows.forEach(({ left: leftName, right: rightName, lf, shift, extraGapBefore }) => {
+    if (extraGapBefore) y += extraGapBefore;
+
     const fieldOffset = Math.round(rowW * lf);
-    const fieldY = y + config.authorizationLineBaselineOffset - fHeight - 2 - shift;
+    // For signature row, make the field taller to span the extra gap above
+    const rowFHeight = extraGapBefore ? fHeight + extraGapBefore : fHeight;
+    const fieldY = y + config.authorizationLineBaselineOffset - rowFHeight - 2 - shift;
 
     const leftX  = margin + inset + fieldOffset;
     const leftW  = (margin + colW)         - leftX  - 4;
     const rightX = margin + colW + colGap + inset + fieldOffset;
     const rightW = (margin + contentWidth) - rightX - 4;
 
-    coords.push({ fieldName: leftName,  x: leftX,  y: fieldY, width: Math.max(20, leftW),  height: fHeight });
-    coords.push({ fieldName: rightName, x: rightX, y: fieldY, width: Math.max(20, rightW), height: fHeight });
+    coords.push({ fieldName: leftName,  x: leftX,  y: fieldY, width: Math.max(20, leftW),  height: rowFHeight });
+    coords.push({ fieldName: rightName, x: rightX, y: fieldY, width: Math.max(20, rightW), height: rowFHeight });
     y += lineH;
   });
 

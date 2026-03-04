@@ -455,6 +455,8 @@ function drawAuthorizationSection(doc, x, y, width, record, config) {
     { label: "Owner #2 Name (Print)", value: owner2Name,          required: false },
     config,
   );
+  // Extra vertical space so the drawn/uploaded signature image fits
+  currentY += config.authorizationSignatureExtraGap;
   currentY = drawAuthorizationDoubleLine(
     doc, x, currentY, width,
     { label: "Owner #1 Signature",    value: record.signature,    required: true  },
@@ -675,6 +677,7 @@ function createLayoutConfig(scale = 1, options = {}) {
     authorizationLineLabelFontSize: Math.max(6.0, 7.0 * scale),
     authorizationLineValueFontSize: Math.max(6.2, 7.1 * scale),
     authorizationLineGap: Math.max(13, Math.floor(18 * scale)),
+    authorizationSignatureExtraGap: Math.max(14, Math.floor(20 * scale)),
     authorizationLineBaselineOffset: Math.max(8, Math.floor(11 * scale)),
     authorizationOwnerGap: Math.max(2, Math.floor(4 * scale)),
     authorizationColumnGap: Math.max(8, Math.floor(12 * scale)),

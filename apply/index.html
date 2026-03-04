@@ -749,7 +749,19 @@
 
       function initPad(id) {
         const canvas = document.getElementById('sig-canvas-' + id);
-        if (!canvas || pads[id]) return;
+        if (!canvas) return;
+
+        // If canvas has zero width (still hidden), defer until next frame
+        if (canvas.offsetWidth === 0) {
+          requestAnimationFrame(() => initPad(id));
+          return;
+        }
+
+        // Already initialised — just resize in case container changed
+        if (pads[id]) {
+          resizeCanvasFor(id);
+          return;
+        }
 
         const pad = new SignaturePad(canvas, {
           penColor: '#000',
@@ -758,21 +770,25 @@
         });
         pads[id] = pad;
 
-        // Resize canvas to actual CSS pixels (avoid blur on HiDPI)
-        function resizeCanvas() {
-          const ratio = Math.max(window.devicePixelRatio || 1, 1);
-          const w = canvas.offsetWidth;
-          const h = canvas.offsetHeight;
-          canvas.width  = w * ratio;
-          canvas.height = h * ratio;
-          canvas.getContext('2d').scale(ratio, ratio);
-          pad.clear();
-        }
-        resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
+        resizeCanvasFor(id);
+        window.addEventListener('resize', () => resizeCanvasFor(id));
 
         // On every stroke end, push base64 into hidden input
         pad.addEventListener('endStroke', () => syncDraw(id));
+      }
+
+      function resizeCanvasFor(id) {
+        const canvas = document.getElementById('sig-canvas-' + id);
+        const pad = pads[id];
+        if (!canvas || !pad || canvas.offsetWidth === 0) return;
+
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        const w = canvas.offsetWidth;
+        const h = canvas.offsetHeight;
+        canvas.width  = w * ratio;
+        canvas.height = h * ratio;
+        canvas.getContext('2d').scale(ratio, ratio);
+        pad.clear();
       }
 
       function syncDraw(id) {

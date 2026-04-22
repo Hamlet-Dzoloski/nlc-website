@@ -51,7 +51,6 @@ const LOGO_PATH = path.join(PROJECT_ROOT, 'assets', 'images', 'logo.png');
 const PDF_TEMPLATE_DIR = path.join(__dirname, 'pdf-templates');
 const PDF_FORM_TEMPLATE_PATH = path.join(PDF_TEMPLATE_DIR, 'nolimitcap-empty-application.pdf');
 
-const HUBSPOT_ACCESS_TOKEN = process.env.HUBSPOT_ACCESS_TOKEN;
 const CLIENT_AUTH_SECRET = process.env.CLIENT_AUTH_SECRET || process.env.JWT_SECRET || 'change-this-secret';
 const CLIENT_TOKEN_TTL_SECONDS = Math.max(60, Number(process.env.CLIENT_TOKEN_TTL_SECONDS || 60 * 60 * 12));
 const DEFAULT_ADMIN_EMAIL = 'info@nolimitcap.net';
@@ -313,15 +312,6 @@ async function writeJsonArray(filePath, records) {
 // Utility Functions
 // ===========================================
 
-function splitName(fullName) {
-  if (!fullName) return { first: '', last: '' };
-  const parts = fullName.trim().split(/\s+/);
-  if (parts.length === 1) {
-    return { first: parts[0], last: '' };
-  }
-  return { first: parts[0], last: parts.slice(1).join(' ') };
-}
-
 function normalizeValue(value) {
   if (Array.isArray(value)) {
     return value.map((item) => String(item).trim()).filter(Boolean).join(', ');
@@ -332,18 +322,17 @@ function normalizeValue(value) {
   return String(value).trim();
 }
 
-function toYesNo(value) {
-  const normalized = normalizeValue(value).toLowerCase();
-  if (!normalized) return '';
-  if (['yes', 'true', '1', 'on'].includes(normalized)) return 'YES';
-  if (['no', 'false', '0', 'off'].includes(normalized)) return 'NO';
-  return normalizeValue(value);
-}
-
 function toBooleanField(value) {
   const normalized = normalizeValue(value).toLowerCase();
   if (!normalized) return false;
   return ['yes', 'true', '1', 'on', 'checked'].includes(normalized);
+}
+
+function getConfigStatus(values) {
+  const configured = values.filter((value) => Boolean(normalizeValue(value))).length;
+  if (configured === 0) return 'not_configured';
+  if (configured === values.length) return 'configured';
+  return 'partial';
 }
 
 function mapApplicationRecordForSupabase(record) {
@@ -1122,63 +1111,53 @@ async function getClientFromSupabase(email) {
 }
 
 // ===========================================
-// HubSpot CRM Integration
-// ===========================================
-
-async function sendToHubSpotCrm(record) {
-  if (!HUBSPOT_ACCESS_TOKEN) {
-    return { status: 'skipped' };
-  }
-
-  const { first, last } = splitName(record.name || '');
-  const properties = {
-    email: record.email || '',
-  };
-  if (first) properties.firstname = first;
-  if (last) properties.lastname = last;
-  if (record.company) properties.company = record.company;
-
-  try {
-    const response = await fetch('https://api.hubapi.com/crm/v3/objects/contacts', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${HUBSPOT_ACCESS_TOKEN}`,
-      },
-      body: JSON.stringify({ properties }),
-    });
-
-    if (!response.ok) {
-      return { status: 'failed', code: response.status, provider: 'hubspot-crm' };
-    }
-
-    return { status: 'sent', code: response.status, provider: 'hubspot-crm' };
-  } catch (error) {
-    return { status: 'error', error: error.message, provider: 'hubspot-crm' };
-  }
-}
-
-// ===========================================
 // Switchbox AI CRM Integration
 // ===========================================
 
 const SWITCHBOX_API_URL = process.env.SWITCHBOX_API_URL;
 const SWITCHBOX_API_KEY = process.env.SWITCHBOX_API_KEY;
+const SWITCHBOX_MAX_SIGNATURE_CHARS = Math.max(
+  10000,
+  Number(process.env.SWITCHBOX_MAX_SIGNATURE_CHARS || 150000),
+);
+
+/**
+ * Shallow clone + truncate huge signature data URLs so webhooks stay under gateway limits.
+ * Full application JSON is otherwise sent as-is (1:1 with server record).
+ */
+function prepareRecordForSwitchboxWebhook(record) {
+  if (!record || typeof record !== 'object') return record;
+  const out = { ...record };
+  for (const key of ['signature', 'signature_additional']) {
+    const v = out[key];
+    if (typeof v === 'string' && v.length > SWITCHBOX_MAX_SIGNATURE_CHARS) {
+      out[key] = `${v.slice(0, SWITCHBOX_MAX_SIGNATURE_CHARS)}\n...[truncated]`;
+      out[`${key}_truncated`] = true;
+    }
+  }
+  return out;
+}
 
 async function sendToSwitchboxCrm(record) {
   if (!SWITCHBOX_API_URL) {
-    return { status: 'skipped', reason: 'Switchbox URL not configured' };
+    return { status: 'skipped', reason: 'Switchbox URL not configured', provider: 'switchbox-ai' };
   }
 
+  const payload = prepareRecordForSwitchboxWebhook(record);
+
   try {
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    if (SWITCHBOX_API_KEY) {
+      headers.Authorization = `Bearer ${SWITCHBOX_API_KEY}`;
+      headers['X-API-Key'] = SWITCHBOX_API_KEY;
+    }
+
     const response = await fetch(SWITCHBOX_API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SWITCHBOX_API_KEY}`,
-        'X-API-Key': SWITCHBOX_API_KEY, // Try both standard headers
-      },
-      body: JSON.stringify(record),
+      headers,
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
@@ -1187,7 +1166,15 @@ async function sendToSwitchboxCrm(record) {
       return { status: 'failed', code: response.status, provider: 'switchbox-ai', error: errorText };
     }
 
-    const data = await response.json();
+    const contentType = response.headers.get('content-type') || '';
+    let data = null;
+    if (contentType.includes('application/json')) {
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
+    }
     return { status: 'sent', code: response.status, provider: 'switchbox-ai', data };
   } catch (error) {
     console.error('Switchbox CRM exception:', error);
@@ -1196,19 +1183,24 @@ async function sendToSwitchboxCrm(record) {
 }
 
 async function sendToCrm(record) {
-  const results = {};
-  
-  // Send to HubSpot (if configured)
-  results.hubspot = await sendToHubSpotCrm(record);
+  const switchboxResult = await sendToSwitchboxCrm(record);
+  const results = {
+    switchbox: switchboxResult,
+  };
 
-  // Send to Switchbox AI (if configured)
-  results.switchbox = await sendToSwitchboxCrm(record);
+  const sentProviders = Object.values(results).filter((r) => r.status === 'sent');
+  const failedProviders = Object.values(results).filter((r) => r.status === 'failed' || r.status === 'error');
+  const skippedProviders = Object.values(results).filter((r) => r.status === 'skipped');
+  const providerList = (providers) => providers.map((provider) => provider.provider).filter(Boolean).join(', ');
 
-  // Return success if at least one succeeded, or the result of the primary one (Switchbox preference?)
-  // For now, return a combined status
   return {
-    status: (results.hubspot.status === 'sent' || results.switchbox.status === 'sent') ? 'sent' : 'failed',
-    providers: results
+    status: sentProviders.length > 0 ? 'sent' : failedProviders.length > 0 ? 'failed' : 'skipped',
+    code: sentProviders[0]?.code || failedProviders[0]?.code,
+    provider:
+      providerList(sentProviders) ||
+      providerList(failedProviders) ||
+      providerList(skippedProviders),
+    providers: results,
   };
 }
 
@@ -1228,6 +1220,11 @@ app.get('/api/health', async (req, res) => {
       ses: sesClient ? 'connected' : 'not_configured',
       sendgrid: process.env.SENDGRID_API_KEY ? 'connected' : 'not_configured',
       smtp: smtpMailer ? 'connected' : 'not_configured',
+      switchbox: normalizeValue(process.env.SWITCHBOX_API_URL)
+        ? normalizeValue(process.env.SWITCHBOX_API_KEY)
+          ? 'configured'
+          : 'configured_url_only'
+        : 'not_configured',
       pdf_template: templateReady ? 'ready' : 'missing_fallback_renderer',
     },
     pdfTemplate: {
@@ -1325,16 +1322,7 @@ app.post('/api/apply', applyRateLimiter, upload.array('bank_statements', 10), as
     type: file.mimetype,
   }));
 
-  const crmResult = await sendToCrm({
-    name: record.name,
-    email: record.email,
-    company: record.company,
-  });
-  record.crmStatus = crmResult.status;
-  if (crmResult.code) record.crmCode = crmResult.code;
-  if (crmResult.provider) record.crmProvider = crmResult.provider;
-
-  // Generate PDF
+  // Generate PDF first so Switchbox (and storage) receive PDF URL and file metadata on the same payload.
   try {
     const pdfData = await generateApplicationPdf(record);
     record.generated_pdf = {
@@ -1365,6 +1353,11 @@ app.post('/api/apply', applyRateLimiter, upload.array('bank_statements', 10), as
     record.emailStatus = 'failed';
     record.pdfError = error.message;
   }
+
+  const crmResult = await sendToCrm(record);
+  record.crmStatus = crmResult.status;
+  if (crmResult.code) record.crmCode = crmResult.code;
+  if (crmResult.provider) record.crmProvider = crmResult.provider;
 
   // Try Supabase first
   let storageType = 'none';

@@ -14,7 +14,7 @@ const WEBSITE_LOGO_PATH = path.join(
 const AUTHORIZATION_TEXT =
   'By signing below, the Business and Owner(s) identified above (individually, an "Applicant") each represents, acknowledges, and agrees that: ' +
   "(1) all information and documents provided in connection with this application are true, accurate, and complete; " +
-  '(2) Applicant will immediately notify No Limit Capital ("No Limit Capital") of any change in the Business financial condition; ' +
+  '(2) Applicant will immediately notify Biz Bulker Inc dba No Limit Capital ("No Limit Capital") of any change in the Business financial condition; ' +
   '(3) Applicant understands that No Limit Capital may share this information with its representatives, successors, assigns, affiliates and partners as well as third-party lenders/funders and their servicers and financial institutions ("Recipients"); ' +
   "(4) Applicant authorizes No Limit Capital and Recipients to request and receive any investigative reports, consumer credit reports, trade references, statements from creditors or financial institutions, verifications of information, or any other information that No Limit Capital and/or Recipients deem necessary; " +
   "(5) Applicant waives and releases any claims against No Limit Capital, Recipients and any information-providers arising from any act or omission relating to the requesting, receiving, or release of information; " +
@@ -750,17 +750,6 @@ function renderOnePageLayout(doc, record, options = {}) {
 
   y += config.sectionGap;
   y = drawAuthorizationSection(doc, contentX, y, contentWidth, record, config);
-
-  const footerY = doc.page.height - doc.page.margins.bottom - 12;
-  doc
-    .font("Helvetica")
-    .fontSize(7)
-    .fillColor("#64748b")
-    .text("No Limit Capital", contentX, footerY, {
-      width: contentWidth,
-      align: "center",
-      lineBreak: false,
-    });
 }
 
 async function generateApplicationPdfBuffer(record, options = {}) {

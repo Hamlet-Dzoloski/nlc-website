@@ -306,8 +306,9 @@ SMTP_USER=your-smtp-user
 SMTP_PASS=your-smtp-password
 SMTP_FROM=alerts@nolimitcap.com
 
-# HubSpot CRM Integration
-HUBSPOT_ACCESS_TOKEN=your-hubspot-token
+# Switchbox AI CRM (webhook — full JSON for contact + apply)
+SWITCHBOX_API_URL=https://your-switchbox-endpoint.example.com
+SWITCHBOX_API_KEY=your-switchbox-api-key
 
 # Server Configuration
 PORT=5050
@@ -335,7 +336,8 @@ Expected response:
     "s3": "connected",
     "ses": "not_configured",
     "sendgrid": "connected",
-    "smtp": "not_configured"
+    "smtp": "not_configured",
+    "switchbox": "configured"
   }
 }
 ```

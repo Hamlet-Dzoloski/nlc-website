@@ -13,7 +13,7 @@ Location: `server/` (Node.js 18+)
 ### Setup
 
 ```powershell
-cd C:\Users\siaic\Desktop\website\server
+cd C:\Users\siaic\Desktop\NLCC website\server
 copy .env.example .env
 npm install
 npm run dev
@@ -24,6 +24,7 @@ npm run dev
 - `POST /api/contact`
   - Required: `name`, `email`
   - Stores in `server/data/contacts.json`
+  - Sends the submission to **Switchbox AI** when `SWITCHBOX_API_URL` is configured
 
 - `POST /api/apply`
   - Required: `first_name`, `last_name`, `email`
@@ -31,6 +32,7 @@ npm run dev
   - Generates a PDF in `server/generated-pdfs/`
   - Sends email with the generated PDF attachment (if SMTP is configured)
   - Stores full application in `server/data/applications.json`
+  - Sends the full application payload JSON to configured CRMs (notably **Switchbox AI** when `SWITCHBOX_API_URL` is set)
 
 - `GET /api/client/me`
   - Returns the authenticated portal user profile (Bearer token)
@@ -47,6 +49,15 @@ Set these in `server/.env`:
 - `FUNDING_REQUEST_RECIPIENTS` (comma-separated)
 
 If SMTP details are missing, submission still works and PDF is still generated and saved locally.
+
+## Switchbox AI CRM
+
+Set in `server/.env`:
+
+- `SWITCHBOX_API_URL` — **ingest URL Switchbox gives you** (your server POSTs submission JSON here)
+- `SWITCHBOX_API_KEY` — optional; sent as Bearer + `X-API-Key` if Switchbox requires auth
+
+Payload details: **`docs/switchbox-webhook.md`**.
 
 ## Domain Notes (`nolimitcap.net`)
 

@@ -51,6 +51,7 @@ const LOGO_PATH = path.join(PROJECT_ROOT, 'assets', 'images', 'logo.png');
 const PDF_TEMPLATE_DIR = path.join(__dirname, 'pdf-templates');
 const PDF_FORM_TEMPLATE_PATH = path.join(PDF_TEMPLATE_DIR, 'nolimitcap-empty-application.pdf');
 
+const DEFAULT_FUNDING_REQUEST_RECIPIENTS = ['info@nolimitcap.net'];
 const CLIENT_AUTH_SECRET = process.env.CLIENT_AUTH_SECRET || process.env.JWT_SECRET || 'change-this-secret';
 const CLIENT_TOKEN_TTL_SECONDS = Math.max(60, Number(process.env.CLIENT_TOKEN_TTL_SECONDS || 60 * 60 * 12));
 const DEFAULT_ADMIN_EMAIL = 'info@nolimitcap.net';
@@ -333,6 +334,15 @@ function getConfigStatus(values) {
   if (configured === 0) return 'not_configured';
   if (configured === values.length) return 'configured';
   return 'partial';
+}
+
+function getFundingRequestRecipients() {
+  const configured = (process.env.FUNDING_REQUEST_RECIPIENTS || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  return configured.length > 0 ? configured : DEFAULT_FUNDING_REQUEST_RECIPIENTS;
 }
 
 function mapApplicationRecordForSupabase(record) {
@@ -718,14 +728,7 @@ async function sendEmailViaSmtp(to, subject, textBody, htmlBody, attachments, fr
  * Send email with PDF attachment - tries SendGrid first, then SMTP
  */
 async function emailApplicationPdf(record, pdfData) {
-  const recipients = (process.env.FUNDING_REQUEST_RECIPIENTS || '')
-    .split(',')
-    .map((value) => value.trim())
-    .filter(Boolean);
-
-  if (recipients.length === 0) {
-    return { status: 'skipped', reason: 'No recipients configured' };
-  }
+  const recipients = getFundingRequestRecipients();
 
   const applicantName = `${record.first_name || ''} ${record.last_name || ''}`.trim();
   const subject = `New Funding Application - ${applicantName} - No Limit Capital`;
@@ -1220,6 +1223,9 @@ app.get('/api/health', async (req, res) => {
       ses: sesClient ? 'connected' : 'not_configured',
       sendgrid: process.env.SENDGRID_API_KEY ? 'connected' : 'not_configured',
       smtp: smtpMailer ? 'connected' : 'not_configured',
+      funding_request_recipients: normalizeValue(process.env.FUNDING_REQUEST_RECIPIENTS)
+        ? 'configured'
+        : 'info@nolimitcap.net',
       switchbox: normalizeValue(process.env.SWITCHBOX_API_URL)
         ? normalizeValue(process.env.SWITCHBOX_API_KEY)
           ? 'configured'

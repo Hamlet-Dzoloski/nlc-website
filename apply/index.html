@@ -781,6 +781,7 @@
         const pad = pads[id];
         if (!canvas || !pad || canvas.offsetWidth === 0) return;
 
+        const existingData = pad.isEmpty() ? null : pad.toData();
         const ratio = Math.max(window.devicePixelRatio || 1, 1);
         const w = canvas.offsetWidth;
         const h = canvas.offsetHeight;
@@ -788,6 +789,10 @@
         canvas.height = h * ratio;
         canvas.getContext('2d').scale(ratio, ratio);
         pad.clear();
+        if (existingData && existingData.length > 0) {
+          pad.fromData(existingData);
+          syncDraw(id);
+        }
       }
 
       function syncDraw(id) {
@@ -836,7 +841,99 @@
         }
       });
 
-      // File upload → read as data URL
+      function getTrimBounds(ctx, width, height) {
+        const { data } = ctx.getImageData(0, 0, width, height);
+        let top = height;
+        let left = width;
+        let right = -1;
+        let bottom = -1;
+
+        for (let y = 0; y < height; y += 1) {
+          for (let x = 0; x < width; x += 1) {
+            const idx = (y * width + x) * 4;
+            const alpha = data[idx + 3];
+            const red = data[idx];
+            const green = data[idx + 1];
+            const blue = data[idx + 2];
+            const isVisibleInk = alpha > 16 && (red < 245 || green < 245 || blue < 245);
+
+            if (!isVisibleInk) continue;
+
+            if (x < left) left = x;
+            if (x > right) right = x;
+            if (y < top) top = y;
+            if (y > bottom) bottom = y;
+          }
+        }
+
+        if (right < left || bottom < top) return null;
+        return { left, top, right, bottom };
+      }
+
+      function loadImageToDataUrl(file) {
+        return new Promise((resolve, reject) => {
+          const fileReader = new FileReader();
+          fileReader.onerror = () => reject(new Error('Could not read uploaded file.'));
+          fileReader.onload = function (ev) {
+            const img = new Image();
+            img.onerror = () => reject(new Error('Uploaded image format is not supported.'));
+            img.onload = function () {
+              const canvas = document.createElement('canvas');
+              canvas.width = img.naturalWidth || img.width;
+              canvas.height = img.naturalHeight || img.height;
+              const ctx = canvas.getContext('2d');
+              if (!ctx) {
+                reject(new Error('Canvas is not available for signature conversion.'));
+                return;
+              }
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              ctx.drawImage(img, 0, 0);
+
+              const bounds = getTrimBounds(ctx, canvas.width, canvas.height);
+              if (!bounds) {
+                resolve(canvas.toDataURL('image/png'));
+                return;
+              }
+
+              const pad = 12;
+              const cropX = Math.max(0, bounds.left - pad);
+              const cropY = Math.max(0, bounds.top - pad);
+              const cropW = Math.min(canvas.width - cropX, bounds.right - bounds.left + 1 + pad * 2);
+              const cropH = Math.min(canvas.height - cropY, bounds.bottom - bounds.top + 1 + pad * 2);
+
+              const trimmedCanvas = document.createElement('canvas');
+              trimmedCanvas.width = cropW;
+              trimmedCanvas.height = cropH;
+              const trimmedCtx = trimmedCanvas.getContext('2d');
+              if (!trimmedCtx) {
+                resolve(canvas.toDataURL('image/png'));
+                return;
+              }
+
+              trimmedCtx.fillStyle = '#ffffff';
+              trimmedCtx.fillRect(0, 0, cropW, cropH);
+              trimmedCtx.drawImage(
+                canvas,
+                cropX,
+                cropY,
+                cropW,
+                cropH,
+                0,
+                0,
+                cropW,
+                cropH,
+              );
+
+              resolve(trimmedCanvas.toDataURL('image/png'));
+            };
+            img.src = ev.target.result;
+          };
+          fileReader.readAsDataURL(file);
+        });
+      }
+
+      // File upload → normalize to PNG data URL for PDF embedding
       document.addEventListener('change', function (e) {
         const fileInput = e.target.closest('.sig-file-input');
         if (!fileInput) return;
@@ -844,15 +941,20 @@
         const file    = fileInput.files[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = function (ev) {
-          const dataUrl = ev.target.result;
-          const hidden  = document.getElementById('sig-value-' + id);
-          if (hidden) hidden.value = dataUrl;
-          const preview = document.getElementById('sig-preview-' + id);
-          if (preview) { preview.src = dataUrl; preview.hidden = false; }
-        };
-        reader.readAsDataURL(file);
+        loadImageToDataUrl(file)
+          .then(function (dataUrl) {
+            const hidden  = document.getElementById('sig-value-' + id);
+            if (hidden) hidden.value = dataUrl;
+            const preview = document.getElementById('sig-preview-' + id);
+            if (preview) { preview.src = dataUrl; preview.hidden = false; }
+          })
+          .catch(function () {
+            const hidden  = document.getElementById('sig-value-' + id);
+            if (hidden) hidden.value = '';
+            const preview = document.getElementById('sig-preview-' + id);
+            if (preview) preview.hidden = true;
+            window.alert('Please upload a PNG, JPG, or WebP signature image.');
+          });
       });
 
       // On form submit: validate Owner #1 signature is present

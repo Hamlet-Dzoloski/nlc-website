@@ -51,6 +51,7 @@
             data-form="apply"
             data-endpoint="/api/apply"
             data-submit-type="multipart"
+            data-success-mode="application"
             data-step-form
             enctype="multipart/form-data"
           >
@@ -564,10 +565,39 @@
                   <button type="button" class="btn ghost" data-step-prev disabled>Back</button>
                   <button type="button" class="btn light" data-step-next>Next</button>
                   <button type="submit" class="btn" data-step-submit style="display: none;">Submit Application</button>
-                  <div class="form-message"></div>
+                  <div class="form-message" role="status" aria-live="polite" hidden></div>
                 </div>
               </div><!-- /apply-panel -->
             </div><!-- /apply-layout -->
+
+            <section class="apply-success-card" data-apply-success hidden tabindex="-1" aria-live="polite">
+              <div class="apply-success-badge">Application submitted</div>
+              <h2>We received your application successfully.</h2>
+              <p class="apply-success-copy">
+                One submission is enough. Our team is reviewing your application now and will follow up soon.
+              </p>
+              <div class="apply-success-meta">
+                <div class="apply-success-item">
+                  <span>Application ID</span>
+                  <strong data-apply-success-id>Pending</strong>
+                </div>
+                <div class="apply-success-item">
+                  <span>PDF Status</span>
+                  <strong data-apply-success-pdf>Status pending</strong>
+                </div>
+                <div class="apply-success-item">
+                  <span>Submission Storage</span>
+                  <strong data-apply-success-storage>Status pending</strong>
+                </div>
+              </div>
+              <p class="apply-success-note" data-apply-success-note>
+                Keep this page open for a moment if you need to confirm your submission details.
+              </p>
+              <div class="apply-success-actions">
+                <button type="button" class="btn light" data-reset-apply-form>Submit Another Application</button>
+                <a class="btn" href="/contact.html">Contact Our Team</a>
+              </div>
+            </section>
           </form>
         </div>
       </section>

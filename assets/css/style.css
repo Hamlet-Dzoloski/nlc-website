@@ -794,6 +794,11 @@ form {
   flex-basis: 100%;
 }
 
+.is-submitting .apply-actions button,
+.is-submitting .step-tab {
+  opacity: 0.72;
+}
+
 input:not([type="checkbox"]):not([type="radio"]),
 select,
 textarea {
@@ -826,16 +831,105 @@ textarea {
 }
 
 .form-message {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--accent);
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(26, 86, 219, 0.18);
+  background: rgba(219, 234, 254, 0.55);
 }
 
 .form-message.success {
-  color: var(--accent);
+  color: #166534;
+  background: #ecfdf5;
+  border-color: rgba(22, 163, 74, 0.2);
 }
 
 .form-message.error {
   color: #b5463a;
+  background: #fef2f2;
+  border-color: rgba(185, 70, 58, 0.24);
+}
+
+.form-message.pending {
+  color: #1e3a8a;
+  background: #eff6ff;
+  border-color: rgba(30, 64, 175, 0.2);
+}
+
+.apply-success-card {
+  padding: 32px;
+  border-radius: 24px;
+  border: 1px solid rgba(22, 163, 74, 0.18);
+  background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+}
+
+.apply-success-card:focus {
+  outline: 3px solid rgba(37, 99, 235, 0.22);
+  outline-offset: 4px;
+}
+
+.apply-success-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(22, 163, 74, 0.12);
+  color: #166534;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.apply-success-card h2 {
+  margin-top: 18px;
+  margin-bottom: 10px;
+}
+
+.apply-success-copy {
+  max-width: 720px;
+  margin-bottom: 24px;
+}
+
+.apply-success-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.apply-success-item {
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.apply-success-item span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.apply-success-item strong {
+  color: var(--accent-3);
+  font-size: 18px;
+}
+
+.apply-success-note {
+  margin-bottom: 24px;
+}
+
+.apply-success-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 footer {
@@ -984,6 +1078,14 @@ footer {
 
   .footer-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .apply-success-card {
+    padding: 24px;
+  }
+
+  .apply-success-meta {
+    grid-template-columns: 1fr;
   }
 }
 

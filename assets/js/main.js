@@ -52,30 +52,134 @@
 
   const apiBase = window.NCAP_API_BASE || body.dataset.apiBase || '';
   const forms = document.querySelectorAll('form[data-submit]');
+  let pendingSubmissionCount = 0;
+
+  const beforeUnloadHandler = (event) => {
+    if (pendingSubmissionCount <= 0) return;
+    event.preventDefault();
+    event.returnValue = '';
+  };
+
+  window.addEventListener('beforeunload', beforeUnloadHandler);
 
   forms.forEach((form) => {
     const msg = form.querySelector('.form-message');
     const submitButton = form.querySelector('button[type=\"submit\"]');
     const fileInput = form.querySelector('input[type=\"file\"]');
+    const successMode = form.dataset.successMode || '';
+    const isApplicationForm = successMode === 'application' || form.dataset.form === 'apply';
+    const applyLayout = form.querySelector('.apply-layout');
+    const applySuccess = form.querySelector('[data-apply-success]');
+    const applySuccessId = form.querySelector('[data-apply-success-id]');
+    const applySuccessPdf = form.querySelector('[data-apply-success-pdf]');
+    const applySuccessStorage = form.querySelector('[data-apply-success-storage]');
+    const applySuccessNote = form.querySelector('[data-apply-success-note]');
+    const resetApplyButton = form.querySelector('[data-reset-apply-form]');
+    const applyNavButtons = Array.from(form.querySelectorAll('[data-step-prev], [data-step-next], [data-step-jump]'));
     const submitType = form.dataset.submitType || '';
     const isMultipart =
       submitType === 'multipart' ||
       form.enctype === 'multipart/form-data' ||
       Boolean(fileInput);
 
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
-
-      if (msg) {
-        msg.textContent = '';
-        msg.classList.remove('error', 'success');
+    const setMessage = (text, tone = '') => {
+      if (!msg) return;
+      msg.textContent = text || '';
+      msg.hidden = !text;
+      msg.classList.remove('error', 'success', 'pending');
+      if (tone) {
+        msg.classList.add(tone);
       }
+    };
+
+    const setSubmittingState = (isSubmitting) => {
+      form.classList.toggle('is-submitting', isSubmitting);
+      form.setAttribute('aria-busy', String(isSubmitting));
+      applyNavButtons.forEach((button) => {
+        button.disabled = isSubmitting;
+      });
 
       if (submitButton) {
-        submitButton.disabled = true;
-        submitButton.dataset.originalLabel = submitButton.textContent;
-        submitButton.textContent = 'Sending...';
+        submitButton.disabled = isSubmitting;
+        if (isSubmitting) {
+          submitButton.dataset.originalLabel = submitButton.dataset.originalLabel || submitButton.textContent;
+          submitButton.textContent = isApplicationForm ? 'Submitting Application...' : 'Sending...';
+        } else {
+          submitButton.textContent = submitButton.dataset.originalLabel || 'Submit';
+        }
       }
+    };
+
+    const parseResponse = async (response) => {
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        try {
+          return await response.json();
+        } catch {
+          return null;
+        }
+      }
+      try {
+        const text = await response.text();
+        return text ? { message: text } : null;
+      } catch {
+        return null;
+      }
+    };
+
+    const formatStatus = (value, fallback) => {
+      if (!value) return fallback;
+      return String(value)
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+    };
+
+    const showApplySuccessState = (responseData) => {
+      if (!applySuccess) return;
+      if (applyLayout) {
+        applyLayout.hidden = true;
+      }
+      applySuccess.hidden = false;
+      if (applySuccessId) {
+        applySuccessId.textContent = responseData?.id || 'Submitted';
+      }
+      if (applySuccessPdf) {
+        applySuccessPdf.textContent = formatStatus(responseData?.pdfStatus, 'Generated');
+      }
+      if (applySuccessStorage) {
+        applySuccessStorage.textContent = formatStatus(responseData?.storage, 'Recorded');
+      }
+      if (applySuccessNote) {
+        const noteParts = [
+          'Your application has been sent to our funding team.',
+          responseData?.emailStatus
+            ? `Email status: ${formatStatus(responseData.emailStatus, 'Pending')}.`
+            : 'You do not need to click submit again.',
+        ];
+        applySuccessNote.textContent = noteParts.join(' ');
+      }
+
+      setMessage('', '');
+      applySuccess.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      requestAnimationFrame(() => applySuccess.focus());
+    };
+
+    if (resetApplyButton) {
+      resetApplyButton.addEventListener('click', () => {
+        window.location.reload();
+      });
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      setMessage(
+        isApplicationForm
+          ? 'Submitting your application. One click is enough. Please wait while we generate your PDF and notify our team...'
+          : '',
+        isApplicationForm ? 'pending' : '',
+      );
+      setSubmittingState(true);
+      pendingSubmissionCount += 1;
 
       const formData = new FormData(form);
       let endpoint = form.dataset.endpoint || `${apiBase}/api/contact`;
@@ -116,25 +220,34 @@
 
       try {
         const response = await fetch(endpoint, fetchOptions);
+        const responseData = await parseResponse(response);
 
         if (!response.ok) {
-          throw new Error('Request failed');
+          const errorMessage =
+            responseData?.error ||
+            responseData?.message ||
+            'We could not submit your request right now. Please try again later.';
+          throw new Error(errorMessage);
         }
 
-        form.reset();
-        if (msg) {
-          msg.textContent = 'Thanks! We received your request.';
-          msg.classList.add('success');
+        if (isApplicationForm) {
+          showApplySuccessState(responseData || {});
+        } else {
+          form.reset();
+          setMessage('Thanks! We received your request.', 'success');
         }
       } catch (error) {
+        setMessage(error.message || 'We could not submit your request right now. Please try again later.', 'error');
         if (msg) {
-          msg.textContent = 'We could not submit your request right now. Please try again later.';
-          msg.classList.add('error');
+          msg.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       } finally {
-        if (submitButton) {
-          submitButton.disabled = false;
-          submitButton.textContent = submitButton.dataset.originalLabel || 'Submit';
+        pendingSubmissionCount = Math.max(0, pendingSubmissionCount - 1);
+        if (!applySuccess || applySuccess.hidden) {
+          setSubmittingState(false);
+        } else {
+          form.setAttribute('aria-busy', 'false');
+          form.classList.remove('is-submitting');
         }
       }
     });

@@ -1,13 +1,12 @@
 # NoLimitCap Solutions - Deployment Guide
 
-This guide covers the complete setup and deployment process for the NoLimitCap Solutions website on Vercel with Supabase, AWS S3, and email services.
+This guide covers the complete setup and deployment process for the NoLimitCap Solutions website with AWS S3 storage and email services.
 
 ## Table of Contents
 
 1. [Prerequisites](#prerequisites)
-2. [Supabase Setup](#supabase-setup)
-3. [AWS Setup](#aws-setup)
-4. [SendGrid Setup (Recommended for Email)](#sendgrid-setup)
+2. [AWS Setup](#aws-setup)
+3. [SendGrid Setup (Fallback Email)](#sendgrid-setup)
 5. [Vercel Deployment](#vercel-deployment)
 6. [GoDaddy DNS Configuration](#godaddy-dns-configuration)
 7. [Environment Variables](#environment-variables)
@@ -21,56 +20,20 @@ Before starting, ensure you have:
 
 - A [GoDaddy](https://godaddy.com) account with the domain `nolimitcap.com`
 - A [Vercel](https://vercel.com) account
-- A [Supabase](https://supabase.com) account
 - An [AWS](https://aws.amazon.com) account
-- A [SendGrid](https://sendgrid.com) account (recommended for email with attachments)
-
----
-
-## Supabase Setup
-
-### Step 1: Create a New Project
-
-1. Go to [Supabase Dashboard](https://supabase.com/dashboard)
-2. Click "New Project"
-3. Name it `nolimitcap-production`
-4. Set a strong database password (save this!)
-5. Choose a region close to your users (e.g., US East)
-6. Click "Create new project"
-
-### Step 2: Get API Keys
-
-1. Go to **Settings** → **API**
-2. Copy the following values:
-   - **Project URL** → `SUPABASE_URL`
-   - **anon public key** → `SUPABASE_ANON_KEY`
-   - **service_role key** → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ Keep this secret!)
-
-### Step 3: Create Database Tables
-
-1. Go to **SQL Editor** in your Supabase dashboard
-2. Click "New Query"
-3. Copy and paste the contents of [`server/supabase-schema.sql`](server/supabase-schema.sql)
-4. Click "Run" to execute
-
-This creates:
-- `contacts` table
-- `applications` table
-- `application_files` table
-- `clients` table
-- Proper indexes and RLS policies
+- A [SendGrid](https://sendgrid.com) account (optional fallback)
 
 ---
 
 ## AWS Setup
 
-### Step 1: Create S3 Bucket for PDFs
+### Step 1: Create S3 Bucket for PDFs and Submission Records
 
 1. Go to [AWS S3 Console](https://s3.console.aws.amazon.com)
 2. Click "Create bucket"
 3. Configure:
    - **Bucket name**: `nolimitcap-documents` (must be globally unique)
-   - **Region**: US East (N. Virginia) - `us-east-1`
+   - **Region**: US East (Ohio) - `us-east-2`
    - **Block Public Access**: Block all public access (recommended)
    - **Bucket Versioning**: Enable (optional, for backup)
 4. Click "Create bucket"
@@ -115,20 +78,20 @@ This creates:
    - Select "Application running outside AWS"
    - Copy **Access Key ID** and **Secret Access Key**
 
-### Step 3: (Optional) AWS SES for Email
+### Step 3: AWS SES for Email
 
-If you want to use AWS SES instead of SendGrid:
+AWS SES is the primary provider for application PDF emails:
 
 1. Go to [AWS SES Console](https://console.aws.amazon.com/ses)
-2. Verify your sending domain (`nolimitcap.com`)
+2. Verify your sending domain (`nolimitcap.net`) or sender email (`info@nolimitcap.net`)
 3. Request production access (to send to any email)
-4. Create SMTP credentials in SES settings
+4. Ensure the IAM user can call `ses:SendEmail` and `ses:SendRawEmail`
 
 ---
 
-## SendGrid Setup (Recommended)
+## SendGrid Setup (Fallback)
 
-SendGrid is recommended because it handles attachments better than SES.
+SendGrid is optional fallback email. SES is the primary provider for PDF attachments.
 
 ### Step 1: Create Account & Verify Domain
 
@@ -265,22 +228,23 @@ Create a `.env` file in the `server/` directory (never commit this file!) or add
 ### Required Variables
 
 ```env
-# Supabase
-SUPABASE_URL=https://your-project-id.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-
-# AWS S3
-AWS_REGION=us-east-1
+# AWS S3 primary storage
+AWS_REGION=us-east-2
 AWS_ACCESS_KEY_ID=your-aws-access-key
 AWS_SECRET_ACCESS_KEY=your-aws-secret-key
 S3_BUCKET_NAME=nolimitcap-documents
 S3_PDF_PREFIX=applications/pdfs/
+S3_APPLICATION_RECORD_PREFIX=applications/records/
+S3_CONTACT_RECORD_PREFIX=contacts/records/
+S3_PARTNER_RECORD_PREFIX=partners/records/
+S3_PRODUCT_REQUEST_RECORD_PREFIX=product-requests/records/
+S3_UPLOAD_PREFIX=applications/uploads/
+S3_INDEX_PREFIX=indexes/
 
-# Email (SendGrid - Recommended)
-SENDGRID_API_KEY=SG.your-sendgrid-api-key
-SENDGRID_FROM_EMAIL=noreply@nolimitcap.com
-FUNDING_REQUEST_RECIPIENTS=owner@nolimitcap.com
+# Email (SES primary)
+AWS_SES_REGION=us-east-2
+SES_FROM_EMAIL=info@nolimitcap.net
+FUNDING_REQUEST_RECIPIENTS=info@nolimitcap.net
 
 # Authentication
 CLIENT_AUTH_SECRET=your-very-long-random-secret-at-least-32-characters
@@ -288,23 +252,28 @@ CLIENT_ADMIN_EMAIL=admin@nolimitcap.com
 CLIENT_ADMIN_PASSWORD=YourSecurePassword123!
 
 # Application
-APP_NAME=NoLimitCap Solutions
-APP_URL=https://nolimitcap.com
+APP_NAME=No Limit Capital
+APP_URL=https://nolimitcap.net
 ```
 
 ### Optional Variables
 
 ```env
-# AWS SES (alternative email)
-AWS_SES_REGION=us-east-1
-SES_FROM_EMAIL=noreply@nolimitcap.com
+# Supabase legacy storage (normally disabled)
+USE_SUPABASE=false
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+
+# SendGrid fallback email
+SENDGRID_API_KEY=SG.your-sendgrid-api-key
+SENDGRID_FROM_EMAIL=info@nolimitcap.net
 
 # SMTP (fallback email)
 SMTP_HOST=smtp.example.com
 SMTP_PORT=587
 SMTP_USER=your-smtp-user
 SMTP_PASS=your-smtp-password
-SMTP_FROM=alerts@nolimitcap.com
+SMTP_FROM=info@nolimitcap.net
 
 # Switchbox AI CRM (webhook — full JSON for contact + apply)
 SWITCHBOX_API_URL=https://your-switchbox-endpoint.example.com
@@ -332,12 +301,13 @@ Expected response:
   "ok": true,
   "uptime": 123.456,
   "services": {
-    "supabase": "connected",
+    "storage": "s3",
+    "supabase": "not_used",
     "s3": "connected",
-    "ses": "not_configured",
-    "sendgrid": "connected",
+    "ses": "connected",
+    "sendgrid": "not_configured",
     "smtp": "not_configured",
-    "switchbox": "configured"
+    "switchbox": "not_configured"
   }
 }
 ```
@@ -347,9 +317,9 @@ Expected response:
 1. Go to `https://nolimitcap.com/apply/`
 2. Fill out the form
 3. Submit and verify:
-   - Application saved to Supabase
+   - Application JSON record saved to S3
    - PDF generated and uploaded to S3
-   - Email sent with PDF attachment
+   - Email sent with editable PDF attachment to `info@nolimitcap.net`
 
 ### Test Client Login
 
@@ -365,9 +335,9 @@ Expected response:
 
 1. **DNS not resolving**: Wait for propagation (up to 48 hours)
 2. **CORS errors**: Check `CORS_ORIGIN` matches your domain exactly
-3. **Email not sending**: Verify SendGrid domain authentication
-4. **S3 upload failing**: Check IAM permissions and bucket name
-5. **Supabase connection failing**: Verify service role key
+3. **Email not sending**: Verify SES identity, production access, and IAM permissions
+4. **S3 upload failing**: Check IAM permissions, bucket name, and AWS region
+5. **Submission saved locally**: S3 record storage failed; check server logs for the S3 JSON save error
 
 ### Useful Commands
 
@@ -390,7 +360,6 @@ vercel env ls
 - [ ] Use strong `CLIENT_AUTH_SECRET` (32+ characters)
 - [ ] Never commit `.env` files
 - [ ] Restrict S3 bucket access with IAM policies
-- [ ] Enable Supabase RLS (already in schema)
 - [ ] Use HTTPS only (Vercel handles this)
 - [ ] Set up rate limiting (already configured)
 
@@ -400,7 +369,6 @@ vercel env ls
 
 For issues with:
 - **Vercel**: [vercel.com/support](https://vercel.com/support)
-- **Supabase**: [supabase.com/support](https://supabase.com/support)
 - **AWS**: [aws.amazon.com/support](https://aws.amazon.com/support)
 - **SendGrid**: [sendgrid.com/support](https://sendgrid.com/support)
 - **GoDaddy**: [godaddy.com/help](https://godaddy.com/help)

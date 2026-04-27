@@ -2,8 +2,7 @@
  * NoLimitCap Solutions - Backend Server
  * 
  * Features:
- * - Supabase database integration
- * - AWS S3 for PDF storage
+ * - AWS S3 for submission record and PDF storage
  * - AWS SES / SendGrid for email delivery
  * - PDF generation with pdfkit
  */
@@ -18,7 +17,7 @@ const multer = require('multer');
 const nodemailer = require('nodemailer');
 const { createClient } = require('@supabase/supabase-js');
 const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
-const { SESClient, SendEmailCommand } = require('@aws-sdk/client-ses');
+const { SESClient, SendEmailCommand, SendRawEmailCommand } = require('@aws-sdk/client-ses');
 const sgMail = require('@sendgrid/mail');
 const { generateApplicationPdfBuffer } = require('./pdf-layout');
 const { generateApplicationPdfFromTemplate, generateFillablePdfFromLayout } = require('./pdf-template-fill');
@@ -34,7 +33,7 @@ const PORT = process.env.PORT || 5050;
 const IS_SERVERLESS = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_VERSION;
 
 // In serverless environments, only /tmp is writable.
-// For persistence, you MUST use Supabase (Database) and S3 (File Storage).
+// For persistence, use AWS S3 for submission records, uploads, and PDFs.
 const WRITABLE_ROOT = IS_SERVERLESS ? os.tmpdir() : __dirname;
 
 const DATA_DIR = path.join(WRITABLE_ROOT, 'data');
@@ -66,18 +65,19 @@ const LOGIN_RATE_LIMIT_MAX_REQUESTS = Math.max(3, Number(process.env.LOGIN_RATE_
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const USE_SUPABASE = process.env.USE_SUPABASE === 'true';
 
 let supabase = null;
-if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
+if (USE_SUPABASE && SUPABASE_URL && SUPABASE_SERVICE_KEY) {
   supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
   });
-  console.log('Supabase connected successfully');
+  console.log('Supabase connected successfully for legacy reads');
 } else {
-  console.warn('Supabase not configured. Falling back to local JSON storage.');
+  console.log('Supabase disabled. AWS S3 is the primary submission storage.');
 }
 
 // ===========================================
@@ -86,7 +86,13 @@ if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
 
 const AWS_REGION = process.env.AWS_REGION || 'us-east-1';
 const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
-const S3_PDF_PREFIX = process.env.S3_PDF_PREFIX || 'applications/pdfs/';
+const S3_PDF_PREFIX = normalizeS3Prefix(process.env.S3_PDF_PREFIX || 'applications/pdfs/');
+const S3_APPLICATION_RECORD_PREFIX = normalizeS3Prefix(process.env.S3_APPLICATION_RECORD_PREFIX || 'applications/records/');
+const S3_CONTACT_RECORD_PREFIX = normalizeS3Prefix(process.env.S3_CONTACT_RECORD_PREFIX || 'contacts/records/');
+const S3_PARTNER_RECORD_PREFIX = normalizeS3Prefix(process.env.S3_PARTNER_RECORD_PREFIX || 'partners/records/');
+const S3_PRODUCT_REQUEST_RECORD_PREFIX = normalizeS3Prefix(process.env.S3_PRODUCT_REQUEST_RECORD_PREFIX || 'product-requests/records/');
+const S3_UPLOAD_PREFIX = normalizeS3Prefix(process.env.S3_UPLOAD_PREFIX || 'applications/uploads/');
+const S3_INDEX_PREFIX = normalizeS3Prefix(process.env.S3_INDEX_PREFIX || 'indexes/');
 
 let s3Client = null;
 if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY && S3_BUCKET_NAME) {
@@ -321,6 +327,33 @@ function normalizeValue(value) {
     return '';
   }
   return String(value).trim();
+}
+
+function normalizeS3Prefix(value) {
+  const clean = normalizeValue(value).replace(/^\/+|\/+$/g, '');
+  return clean ? `${clean}/` : '';
+}
+
+function buildS3Url(key) {
+  return `https://${S3_BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${key}`;
+}
+
+function getRecordDateParts(record) {
+  const date = record?.createdAt ? new Date(record.createdAt) : new Date();
+  const validDate = Number.isNaN(date.getTime()) ? new Date() : date;
+  return {
+    year: String(validDate.getUTCFullYear()),
+    month: String(validDate.getUTCMonth() + 1).padStart(2, '0'),
+  };
+}
+
+function buildRecordKey(prefix, record) {
+  const { year, month } = getRecordDateParts(record);
+  return `${prefix}${year}/${month}/${record.id}.json`;
+}
+
+function getSubmissionIndexKey(type) {
+  return `${S3_INDEX_PREFIX}${type}.json`;
 }
 
 function toBooleanField(value) {
@@ -589,7 +622,7 @@ async function uploadPdfToS3(buffer, fileName) {
 
     await s3Client.send(command);
 
-    const url = `https://${S3_BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${key}`;
+    const url = buildS3Url(key);
 
     return {
       status: 'uploaded',
@@ -601,6 +634,169 @@ async function uploadPdfToS3(buffer, fileName) {
     console.error('S3 upload error:', error);
     return { status: 'failed', error: error.message };
   }
+}
+
+async function uploadLocalFileToS3(file, recordId) {
+  if (!s3Client || !S3_BUCKET_NAME) {
+    return { status: 'skipped', reason: 'S3 not configured' };
+  }
+
+  try {
+    const ext = path.extname(file.originalname || file.filename || '');
+    const key = `${S3_UPLOAD_PREFIX}${recordId}/${file.filename || `${crypto.randomUUID()}${ext}`}`;
+    const body = await fs.readFile(file.path);
+    const command = new PutObjectCommand({
+      Bucket: S3_BUCKET_NAME,
+      Key: key,
+      Body: body,
+      ContentType: file.mimetype || 'application/octet-stream',
+      Metadata: {
+        'original-name': String(file.originalname || '').slice(0, 1024),
+        'application-id': recordId,
+        'uploaded-at': new Date().toISOString(),
+      },
+    });
+
+    await s3Client.send(command);
+    return {
+      status: 'uploaded',
+      s3Key: key,
+      s3Bucket: S3_BUCKET_NAME,
+      s3Url: buildS3Url(key),
+    };
+  } catch (error) {
+    console.error('S3 file upload error:', error);
+    return { status: 'failed', error: error.message };
+  }
+}
+
+async function putJsonToS3(key, data) {
+  if (!s3Client || !S3_BUCKET_NAME) {
+    return { status: 'skipped', reason: 'S3 not configured' };
+  }
+
+  try {
+    const command = new PutObjectCommand({
+      Bucket: S3_BUCKET_NAME,
+      Key: key,
+      Body: JSON.stringify(data, null, 2),
+      ContentType: 'application/json',
+      Metadata: {
+        'uploaded-at': new Date().toISOString(),
+      },
+    });
+
+    await s3Client.send(command);
+    return {
+      status: 'saved',
+      s3Key: key,
+      s3Bucket: S3_BUCKET_NAME,
+      s3Url: buildS3Url(key),
+    };
+  } catch (error) {
+    console.error('S3 JSON save error:', error);
+    return { status: 'failed', error: error.message };
+  }
+}
+
+async function streamToString(stream) {
+  if (!stream) return '';
+  if (typeof stream.transformToString === 'function') {
+    return stream.transformToString();
+  }
+
+  const chunks = [];
+  for await (const chunk of stream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks).toString('utf8');
+}
+
+async function getJsonFromS3(key, fallback = null) {
+  if (!s3Client || !S3_BUCKET_NAME) {
+    return fallback;
+  }
+
+  try {
+    const command = new GetObjectCommand({
+      Bucket: S3_BUCKET_NAME,
+      Key: key,
+    });
+    const response = await s3Client.send(command);
+    const raw = await streamToString(response.Body);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (error) {
+    const code = error?.Code || error?.name;
+    if (code !== 'NoSuchKey' && code !== 'NotFound') {
+      console.warn(`S3 JSON read failed for ${key}:`, error.message);
+    }
+    return fallback;
+  }
+}
+
+function buildSubmissionSummary(type, record, recordResult) {
+  return {
+    id: record.id,
+    type,
+    createdAt: record.createdAt,
+    name: record.name || '',
+    email: record.email || '',
+    company: record.company || '',
+    pdfStatus: record.pdfStatus,
+    emailStatus: record.emailStatus,
+    crmStatus: record.crmStatus,
+    generated_pdf_url: record.generated_pdf_url,
+    generated_pdf_s3_key: record.generated_pdf_s3_key,
+    record_s3_key: recordResult.s3Key,
+    record_s3_url: recordResult.s3Url,
+  };
+}
+
+async function appendS3Index(indexKey, summary) {
+  const current = await getJsonFromS3(indexKey, []);
+  const records = Array.isArray(current) ? current : [];
+  const next = [
+    summary,
+    ...records.filter((item) => item?.id !== summary.id),
+  ].slice(0, 500);
+  return putJsonToS3(indexKey, next);
+}
+
+async function saveSubmissionToS3(type, record, prefix) {
+  const key = buildRecordKey(prefix, record);
+  const recordResult = await putJsonToS3(key, record);
+  if (recordResult.status !== 'saved') {
+    return recordResult;
+  }
+
+  const indexKey = getSubmissionIndexKey(type);
+  const indexResult = await appendS3Index(indexKey, buildSubmissionSummary(type, record, recordResult));
+  if (indexResult.status !== 'saved') {
+    return { ...recordResult, indexStatus: indexResult.status, indexError: indexResult.error || indexResult.reason };
+  }
+
+  return { ...recordResult, indexStatus: 'saved', indexKey };
+}
+
+function getSubmissionRecordPrefix(type) {
+  if (type === 'partner') return S3_PARTNER_RECORD_PREFIX;
+  if (type === 'product-request') return S3_PRODUCT_REQUEST_RECORD_PREFIX;
+  return S3_CONTACT_RECORD_PREFIX;
+}
+
+async function saveApplicationToS3(record) {
+  const key = buildRecordKey(S3_APPLICATION_RECORD_PREFIX, record);
+  record.generated_record_s3_key = key;
+  record.generated_record_url = buildS3Url(key);
+  return saveSubmissionToS3('applications', record, S3_APPLICATION_RECORD_PREFIX);
+}
+
+async function saveContactToS3(record, type = 'contacts') {
+  const prefix = getSubmissionRecordPrefix(type);
+  const key = buildRecordKey(prefix, record);
+  record.generated_record_s3_key = key;
+  record.generated_record_url = buildS3Url(key);
+  return saveSubmissionToS3(type, record, prefix);
 }
 
 // ===========================================
@@ -627,6 +823,61 @@ function createSmtpMailer() {
 
 const smtpMailer = createSmtpMailer();
 
+function normalizeEmailList(to) {
+  return (Array.isArray(to) ? to : [to])
+    .map((value) => normalizeValue(value))
+    .filter(Boolean);
+}
+
+function wrapBase64(value) {
+  return String(value).replace(/.{1,76}/g, '$&\r\n').trim();
+}
+
+function buildRawEmail({ from, to, subject, textBody, htmlBody, attachments = [] }) {
+  const recipients = normalizeEmailList(to);
+  const mixedBoundary = `mixed-${crypto.randomUUID()}`;
+  const altBoundary = `alt-${crypto.randomUUID()}`;
+  const lines = [
+    `From: ${from}`,
+    `To: ${recipients.join(', ')}`,
+    `Subject: ${subject}`,
+    'MIME-Version: 1.0',
+    `Content-Type: multipart/mixed; boundary="${mixedBoundary}"`,
+    '',
+    `--${mixedBoundary}`,
+    `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
+    '',
+    `--${altBoundary}`,
+    'Content-Type: text/plain; charset="UTF-8"',
+    'Content-Transfer-Encoding: 7bit',
+    '',
+    textBody || '',
+    '',
+    `--${altBoundary}`,
+    'Content-Type: text/html; charset="UTF-8"',
+    'Content-Transfer-Encoding: 7bit',
+    '',
+    htmlBody || `<p>${textBody || ''}</p>`,
+    '',
+    `--${altBoundary}--`,
+  ];
+
+  attachments.forEach((att) => {
+    lines.push(
+      '',
+      `--${mixedBoundary}`,
+      `Content-Type: ${att.contentType || 'application/octet-stream'}; name="${att.filename}"`,
+      'Content-Transfer-Encoding: base64',
+      `Content-Disposition: attachment; filename="${att.filename}"`,
+      '',
+      wrapBase64(Buffer.from(att.content).toString('base64')),
+    );
+  });
+
+  lines.push('', `--${mixedBoundary}--`, '');
+  return Buffer.from(lines.join('\r\n'));
+}
+
 /**
  * Send email using AWS SES
  */
@@ -636,22 +887,37 @@ async function sendEmailViaSes(to, subject, textBody, htmlBody, attachments, fro
   }
 
   try {
-    // Note: SES doesn't support attachments directly in the same way
-    // For attachments, we need to use raw email or SendGrid
-    // This is a simplified version for text emails
-    const command = new SendEmailCommand({
-      Source: from || process.env.SES_FROM_EMAIL || 'info@nolimitcap.net',
-      Destination: {
-        ToAddresses: Array.isArray(to) ? to : [to],
-      },
-      Message: {
-        Subject: { Data: subject },
-        Body: {
-          Text: { Data: textBody },
-          Html: { Data: htmlBody || textBody },
-        },
-      },
-    });
+    const source = from || process.env.SES_FROM_EMAIL || 'info@nolimitcap.net';
+    const recipients = normalizeEmailList(to);
+    const hasAttachments = Array.isArray(attachments) && attachments.length > 0;
+    const command = hasAttachments
+      ? new SendRawEmailCommand({
+          Source: source,
+          Destinations: recipients,
+          RawMessage: {
+            Data: buildRawEmail({
+              from: source,
+              to: recipients,
+              subject,
+              textBody,
+              htmlBody,
+              attachments,
+            }),
+          },
+        })
+      : new SendEmailCommand({
+          Source: source,
+          Destination: {
+            ToAddresses: recipients,
+          },
+          Message: {
+            Subject: { Data: subject },
+            Body: {
+              Text: { Data: textBody },
+              Html: { Data: htmlBody || textBody },
+            },
+          },
+        });
 
     const response = await sesClient.send(command);
     return { status: 'sent', messageId: response.MessageId };
@@ -725,7 +991,7 @@ async function sendEmailViaSmtp(to, subject, textBody, htmlBody, attachments, fr
 }
 
 /**
- * Send email with PDF attachment - tries SendGrid first, then SMTP
+ * Send email with PDF attachment.
  */
 async function emailApplicationPdf(record, pdfData) {
   const recipients = getFundingRequestRecipients();
@@ -797,22 +1063,22 @@ async function emailApplicationPdf(record, pdfData) {
     },
   ];
 
-  // Try SendGrid first (best for attachments)
-  let result = await sendEmailViaSendGrid(recipients, subject, textBody, htmlBody, attachments);
+  // Try SES first (primary production provider with raw MIME PDF attachment support).
+  let result = await sendEmailViaSes(recipients, subject, textBody, htmlBody, attachments);
+  if (result.status === 'sent') {
+    return { ...result, provider: 'ses' };
+  }
+
+  // Fall back to SendGrid.
+  result = await sendEmailViaSendGrid(recipients, subject, textBody, htmlBody, attachments);
   if (result.status === 'sent') {
     return { ...result, provider: 'sendgrid' };
   }
 
-  // Fall back to SMTP
+  // Fall back to SMTP.
   result = await sendEmailViaSmtp(recipients, subject, textBody, htmlBody, attachments);
   if (result.status === 'sent') {
     return { ...result, provider: 'smtp' };
-  }
-
-  // Last resort: SES (without attachment - just notification)
-  result = await sendEmailViaSes(recipients, subject, textBody, htmlBody, []);
-  if (result.status === 'sent') {
-    return { ...result, provider: 'ses', note: 'Sent without attachment' };
   }
 
   return { status: 'failed', reason: 'All email providers failed' };
@@ -906,22 +1172,22 @@ async function sendApplicantConfirmationEmail(record) {
 
   const fromAddress = 'info@nolimitcap.net';
 
-  // Try SendGrid first
-  let result = await sendEmailViaSendGrid(applicantEmail, subject, textBody, htmlBody, [], fromAddress);
+  // Try SES first to match the primary production email provider.
+  let result = await sendEmailViaSes(applicantEmail, subject, textBody, htmlBody, [], fromAddress);
+  if (result.status === 'sent') {
+    return { ...result, provider: 'ses' };
+  }
+
+  // Fall back to SendGrid.
+  result = await sendEmailViaSendGrid(applicantEmail, subject, textBody, htmlBody, [], fromAddress);
   if (result.status === 'sent') {
     return { ...result, provider: 'sendgrid' };
   }
 
-  // Fall back to SMTP
+  // Fall back to SMTP.
   result = await sendEmailViaSmtp(applicantEmail, subject, textBody, htmlBody, [], fromAddress);
   if (result.status === 'sent') {
     return { ...result, provider: 'smtp' };
-  }
-
-  // Last resort: SES
-  result = await sendEmailViaSes(applicantEmail, subject, textBody, htmlBody, [], fromAddress);
-  if (result.status === 'sent') {
-    return { ...result, provider: 'ses' };
   }
 
   return { status: 'failed', reason: 'All email providers failed' };
@@ -1218,7 +1484,8 @@ app.get('/api/health', async (req, res) => {
     ok: true,
     uptime: process.uptime(),
     services: {
-      supabase: supabase ? 'connected' : 'not_configured',
+      storage: s3Client ? 's3' : 'local_fallback',
+      supabase: USE_SUPABASE && supabase ? 'legacy_enabled' : 'not_used',
       s3: s3Client ? 'connected' : 'not_configured',
       ses: sesClient ? 'connected' : 'not_configured',
       sendgrid: process.env.SENDGRID_API_KEY ? 'connected' : 'not_configured',
@@ -1268,18 +1535,14 @@ app.post('/api/contact', contactRateLimiter, async (req, res) => {
   if (crmResult.code) record.crmCode = crmResult.code;
   if (crmResult.provider) record.crmProvider = crmResult.provider;
 
-  // Route to different Supabase tables based on form type
-  let supabaseResult;
-  if (formType === 'partner') {
-    supabaseResult = await savePartnerToSupabase(record);
-  } else if (formType === 'product-request') {
-    supabaseResult = await saveProductRequestToSupabase(record);
-  } else {
-    supabaseResult = await saveContactToSupabase(record);
-  }
+  // Store website submissions in S3. Local JSON is only an emergency fallback.
+  const storageType = formType === 'partner' || formType === 'product-request' ? formType : 'contacts';
+  const s3RecordResult = await saveContactToS3(record, storageType);
 
-  if (supabaseResult.status === 'saved') {
-    return res.json({ ok: true, id: record.id, crmStatus: record.crmStatus, storage: 'supabase', table: formType });
+  if (s3RecordResult.status === 'saved') {
+    record.generated_record_s3_key = s3RecordResult.s3Key;
+    record.generated_record_url = s3RecordResult.s3Url;
+    return res.json({ ok: true, id: record.id, crmStatus: record.crmStatus, storage: 's3', table: formType });
   }
 
   // Fall back to local storage
@@ -1321,12 +1584,20 @@ app.post('/api/apply', applyRateLimiter, upload.array('bank_statements', 10), as
   record.company = record.legal_business_name || record.business_dba || '';
 
   const files = Array.isArray(req.files) ? req.files : [];
-  record.files = files.map((file) => ({
-    originalName: file.originalname,
-    storedName: file.filename,
-    size: file.size,
-    type: file.mimetype,
-  }));
+  record.files = [];
+  for (const file of files) {
+    const uploadedFile = await uploadLocalFileToS3(file, record.id);
+    record.files.push({
+      originalName: file.originalname,
+      storedName: file.filename,
+      size: file.size,
+      type: file.mimetype,
+      s3Status: uploadedFile.status,
+      s3Key: uploadedFile.s3Key,
+      s3Url: uploadedFile.s3Url,
+      s3Error: uploadedFile.error || uploadedFile.reason,
+    });
+  }
 
   // Generate PDF first so Switchbox (and storage) receive PDF URL and file metadata on the same payload.
   try {
@@ -1365,11 +1636,13 @@ app.post('/api/apply', applyRateLimiter, upload.array('bank_statements', 10), as
   if (crmResult.code) record.crmCode = crmResult.code;
   if (crmResult.provider) record.crmProvider = crmResult.provider;
 
-  // Try Supabase first
+  // Store the full application record in S3. Local JSON is only an emergency fallback.
   let storageType = 'none';
-  const supabaseResult = await saveApplicationToSupabase(record);
-  if (supabaseResult.status === 'saved') {
-    storageType = 'supabase';
+  const s3RecordResult = await saveApplicationToS3(record);
+  if (s3RecordResult.status === 'saved') {
+    storageType = 's3';
+    record.generated_record_s3_key = s3RecordResult.s3Key;
+    record.generated_record_url = s3RecordResult.s3Url;
   } else {
     // Fall back to local storage
     try {

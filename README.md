@@ -23,15 +23,16 @@ npm run dev
 
 - `POST /api/contact`
   - Required: `name`, `email`
-  - Stores in `server/data/contacts.json`
+  - Stores the full submission JSON in AWS S3, with `server/data/contacts.json` as emergency fallback
   - Sends the submission to **Switchbox AI** when `SWITCHBOX_API_URL` is configured
 
 - `POST /api/apply`
   - Required: `first_name`, `last_name`, `email`
   - Accepts bank statement uploads (`bank_statements`)
-  - Generates a PDF in `server/generated-pdfs/`
-  - Sends email with the generated PDF attachment (if SMTP is configured)
-  - Stores full application in `server/data/applications.json`
+  - Generates an editable filled PDF in `server/generated-pdfs/`
+  - Uploads the PDF, bank statement files, and full application JSON record to AWS S3
+  - Sends email with the generated PDF attachment to `info@nolimitcap.net` via SES first
+  - Falls back to `server/data/applications.json` only if S3 record storage fails
   - Sends the full application payload JSON to configured CRMs (notably **Switchbox AI** when `SWITCHBOX_API_URL` is set)
 
 - `GET /api/client/me`
@@ -40,15 +41,18 @@ npm run dev
 - `GET /api/client/applications`
   - Returns funding applications visible to logged-in user (Bearer token)
 
-## PDF Email Configuration
+## AWS S3 + PDF Email Configuration
 
 Set these in `server/.env`:
 
-- `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`
-- `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
+- `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET_NAME`
+- `S3_PDF_PREFIX`, `S3_APPLICATION_RECORD_PREFIX`, `S3_CONTACT_RECORD_PREFIX`, `S3_INDEX_PREFIX`
+- `AWS_SES_REGION`, `SES_FROM_EMAIL`
 - `FUNDING_REQUEST_RECIPIENTS` (comma-separated)
 
-If SMTP details are missing, submission still works and PDF is still generated and saved locally.
+AWS S3 is the primary storage for application PDFs and JSON submission records. Supabase is not required for normal submissions; set `USE_SUPABASE=true` only for legacy reads/testing.
+
+SES is the primary email provider for PDF attachments. SendGrid/SMTP remain fallback providers if configured.
 
 ## Switchbox AI CRM
 

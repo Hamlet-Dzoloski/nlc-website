@@ -918,8 +918,31 @@ textarea {
 }
 
 .apply-success-item strong {
+  min-width: 0;
   color: var(--accent-3);
   font-size: 18px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.apply-success-reference {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.copy-reference-button {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(26, 86, 219, 0.24);
+  background: #eff6ff;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .apply-success-note {
@@ -1086,6 +1109,20 @@ footer {
 
   .apply-success-meta {
     grid-template-columns: 1fr;
+  }
+
+  .apply-success-reference {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .apply-success-actions {
+    flex-direction: column;
+  }
+
+  .apply-success-actions .btn {
+    width: 100%;
+    justify-content: center;
   }
 }
 

@@ -74,6 +74,7 @@
     const applySuccessPdf = form.querySelector('[data-apply-success-pdf]');
     const applySuccessStorage = form.querySelector('[data-apply-success-storage]');
     const applySuccessNote = form.querySelector('[data-apply-success-note]');
+    const applySuccessCopyButton = form.querySelector('[data-copy-apply-id]');
     const resetApplyButton = form.querySelector('[data-reset-apply-form]');
     const applyNavButtons = Array.from(form.querySelectorAll('[data-step-prev], [data-step-next], [data-step-jump]'));
     const submitType = form.dataset.submitType || '';
@@ -90,6 +91,13 @@
       if (tone) {
         msg.classList.add(tone);
       }
+    };
+
+    const setApplyControlsDisabled = (disabled) => {
+      if (!applyLayout) return;
+      applyLayout.querySelectorAll('input, select, textarea, button').forEach((control) => {
+        control.disabled = disabled;
+      });
     };
 
     const setSubmittingState = (isSubmitting) => {
@@ -136,12 +144,21 @@
 
     const showApplySuccessState = (responseData) => {
       if (!applySuccess) return;
+      setApplyControlsDisabled(true);
       if (applyLayout) {
         applyLayout.hidden = true;
+      }
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Application Submitted';
       }
       applySuccess.hidden = false;
       if (applySuccessId) {
         applySuccessId.textContent = responseData?.id || 'Submitted';
+      }
+      if (applySuccessCopyButton) {
+        applySuccessCopyButton.dataset.copyValue = responseData?.id || '';
+        applySuccessCopyButton.textContent = 'Copy';
       }
       if (applySuccessPdf) {
         applySuccessPdf.textContent = formatStatus(responseData?.pdfStatus, 'Generated');
@@ -150,13 +167,10 @@
         applySuccessStorage.textContent = formatStatus(responseData?.storage, 'Recorded');
       }
       if (applySuccessNote) {
-        const noteParts = [
-          'Your application has been sent to our funding team.',
-          responseData?.emailStatus
-            ? `Email status: ${formatStatus(responseData.emailStatus, 'Pending')}.`
-            : 'You do not need to click submit again.',
-        ];
-        applySuccessNote.textContent = noteParts.join(' ');
+        const emailStatus = String(responseData?.emailStatus || '').toLowerCase();
+        applySuccessNote.textContent = emailStatus === 'sent'
+          ? 'Your application record was submitted successfully and our funding team has been notified. Keep this reference ID for your records.'
+          : 'Your application record was submitted successfully. Keep this reference ID for your records; our team can use it to locate your submission.';
       }
 
       setMessage('', '');
@@ -170,11 +184,25 @@
       });
     }
 
+    if (applySuccessCopyButton) {
+      applySuccessCopyButton.addEventListener('click', async () => {
+        const value = applySuccessCopyButton.dataset.copyValue || applySuccessId?.textContent || '';
+        if (!value || value === 'Pending') return;
+
+        try {
+          await navigator.clipboard.writeText(value);
+          applySuccessCopyButton.textContent = 'Copied';
+        } catch {
+          applySuccessCopyButton.textContent = 'Copy ID';
+        }
+      });
+    }
+
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       setMessage(
         isApplicationForm
-          ? 'Submitting your application. One click is enough. Please wait while we generate your PDF and notify our team...'
+          ? 'Submitting your application. One click is enough. Please do not refresh or close this page while we generate your PDF...'
           : '',
         isApplicationForm ? 'pending' : '',
       );
@@ -237,7 +265,10 @@
           setMessage('Thanks! We received your request.', 'success');
         }
       } catch (error) {
-        setMessage(error.message || 'We could not submit your request right now. Please try again later.', 'error');
+        const fallbackError = isApplicationForm
+          ? 'Your application was not submitted. Please try again or contact info@nolimitcap.net.'
+          : 'We could not submit your request right now. Please try again later.';
+        setMessage(isApplicationForm ? fallbackError : error.message || fallbackError, 'error');
         if (msg) {
           msg.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
@@ -248,6 +279,10 @@
         } else {
           form.setAttribute('aria-busy', 'false');
           form.classList.remove('is-submitting');
+          if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = 'Application Submitted';
+          }
         }
       }
     });

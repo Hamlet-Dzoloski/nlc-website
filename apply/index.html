@@ -466,7 +466,7 @@
                     <div class="field">
                       <span>Upload last 4 months of bank statements (PDF only)</span>
                       <input type="file" name="bank_statements" accept="application/pdf" multiple />
-                      <small class="help-text">Max 80MB each. You can skip and submit without files.</small>
+                      <small class="help-text">PDF only. Keep the combined upload under 25MB so statements can be attached to the email. You can skip and submit without files.</small>
                     </div>
                   </div>
 
@@ -836,6 +836,19 @@
         hidden.value = pad.isEmpty() ? '' : pad.toDataURL('image/png');
       }
 
+      function isDrawPanelVisible(id) {
+        const drawPanel = document.querySelector('[data-panel="draw-' + id + '"]');
+        return Boolean(drawPanel && !drawPanel.hidden);
+      }
+
+      function syncVisibleDrawPads() {
+        ['1', '2'].forEach(id => {
+          if (isDrawPanelVisible(id) && pads[id]) {
+            syncDraw(id);
+          }
+        });
+      }
+
       function switchTab(id, mode) {
         const drawPanel   = document.querySelector('[data-panel="draw-' + id + '"]');
         const uploadPanel = document.querySelector('[data-panel="upload-' + id + '"]');
@@ -911,9 +924,14 @@
             const img = new Image();
             img.onerror = () => reject(new Error('Uploaded image format is not supported.'));
             img.onload = function () {
+              const sourceWidth = img.naturalWidth || img.width;
+              const sourceHeight = img.naturalHeight || img.height;
+              const maxWidth = 900;
+              const maxHeight = 300;
+              const scale = Math.min(1, maxWidth / sourceWidth, maxHeight / sourceHeight);
               const canvas = document.createElement('canvas');
-              canvas.width = img.naturalWidth || img.width;
-              canvas.height = img.naturalHeight || img.height;
+              canvas.width = Math.max(1, Math.round(sourceWidth * scale));
+              canvas.height = Math.max(1, Math.round(sourceHeight * scale));
               const ctx = canvas.getContext('2d');
               if (!ctx) {
                 reject(new Error('Canvas is not available for signature conversion.'));
@@ -921,7 +939,7 @@
               }
               ctx.fillStyle = '#ffffff';
               ctx.fillRect(0, 0, canvas.width, canvas.height);
-              ctx.drawImage(img, 0, 0);
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
               const bounds = getTrimBounds(ctx, canvas.width, canvas.height);
               if (!bounds) {
@@ -996,9 +1014,8 @@
         if (!form) return;
 
         ['1'].forEach(id => {  // Only #1 is required
-          // Make sure draw pad data is captured
-          const pad = pads[id];
-          if (pad) syncDraw(id);
+          // Make sure draw pad data is captured without overwriting uploaded signatures
+          if (isDrawPanelVisible(id) && pads[id]) syncDraw(id);
 
           const hidden = document.getElementById('sig-value-' + id);
           const err    = document.getElementById('sig-error-' + id);
@@ -1013,6 +1030,8 @@
           }
         });
       }, true);  // capture phase so it runs before main.js
+
+      window.NCAP_SYNC_SIGNATURES = syncVisibleDrawPads;
 
       // Auto-init both pads when Step 4 becomes visible
       const observer = new MutationObserver(function () {

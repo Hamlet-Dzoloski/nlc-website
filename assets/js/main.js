@@ -209,6 +209,10 @@
       setSubmittingState(true);
       pendingSubmissionCount += 1;
 
+      if (isApplicationForm && typeof window.NCAP_SYNC_SIGNATURES === 'function') {
+        window.NCAP_SYNC_SIGNATURES();
+      }
+
       const formData = new FormData(form);
       let endpoint = form.dataset.endpoint || `${apiBase}/api/contact`;
       if (endpoint.startsWith('/') && apiBase) {

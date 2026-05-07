@@ -55,6 +55,7 @@ const CLIENT_AUTH_SECRET = process.env.CLIENT_AUTH_SECRET || process.env.JWT_SEC
 const CLIENT_TOKEN_TTL_SECONDS = Math.max(60, Number(process.env.CLIENT_TOKEN_TTL_SECONDS || 60 * 60 * 12));
 const DEFAULT_ADMIN_EMAIL = 'info@nolimitcap.net';
 const DEFAULT_ADMIN_PASSWORD = 'ChangeMeNow123!';
+const MAX_EMAIL_ATTACHMENT_BYTES = Math.max(1, Number(process.env.MAX_EMAIL_ATTACHMENT_MB || 25)) * 1024 * 1024;
 const RATE_LIMIT_WINDOW_MS = Math.max(10 * 1000, Number(process.env.RATE_LIMIT_WINDOW_MS || 10 * 60 * 1000));
 const RATE_LIMIT_MAX_REQUESTS = Math.max(10, Number(process.env.RATE_LIMIT_MAX_REQUESTS || 120));
 const LOGIN_RATE_LIMIT_MAX_REQUESTS = Math.max(3, Number(process.env.LOGIN_RATE_LIMIT_MAX_REQUESTS || 20));
@@ -878,6 +879,55 @@ function buildRawEmail({ from, to, subject, textBody, htmlBody, attachments = []
   return Buffer.from(lines.join('\r\n'));
 }
 
+function sanitizeAttachmentFilename(value, fallback) {
+  const clean = normalizeValue(value)
+    .replace(/[\\/:*?"<>|]+/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return clean || fallback;
+}
+
+async function buildBankStatementEmailAttachments(files, currentBytes = 0) {
+  const attachments = [];
+  const skipped = [];
+  let totalBytes = currentBytes;
+
+  for (const [index, file] of files.entries()) {
+    const originalName = file.originalname || `bank-statement-${index + 1}.pdf`;
+    const filename = sanitizeAttachmentFilename(originalName, `bank-statement-${index + 1}.pdf`);
+    const isPdf = file.mimetype === 'application/pdf' || filename.toLowerCase().endsWith('.pdf');
+
+    if (!isPdf) {
+      skipped.push({ filename, reason: 'Only PDF bank statements are attached to emails' });
+      continue;
+    }
+
+    if (!file.path) {
+      skipped.push({ filename, reason: 'Uploaded file path unavailable' });
+      continue;
+    }
+
+    try {
+      const content = await fs.readFile(file.path);
+      if (totalBytes + content.length > MAX_EMAIL_ATTACHMENT_BYTES) {
+        skipped.push({ filename, reason: 'Email attachment size limit reached' });
+        continue;
+      }
+
+      totalBytes += content.length;
+      attachments.push({
+        filename,
+        content,
+        contentType: 'application/pdf',
+      });
+    } catch (error) {
+      skipped.push({ filename, reason: error.message });
+    }
+  }
+
+  return { attachments, skipped, totalBytes };
+}
+
 /**
  * Send email using AWS SES
  */
@@ -993,8 +1043,14 @@ async function sendEmailViaSmtp(to, subject, textBody, htmlBody, attachments, fr
 /**
  * Send email with PDF attachment.
  */
-async function emailApplicationPdf(record, pdfData) {
+async function emailApplicationPdf(record, pdfData, statementFiles = []) {
   const recipients = getFundingRequestRecipients();
+  const bankStatementResult = await buildBankStatementEmailAttachments(
+    Array.isArray(statementFiles) ? statementFiles : [],
+    pdfData.buffer.length,
+  );
+  const attachedStatementCount = bankStatementResult.attachments.length;
+  const skippedStatementCount = bankStatementResult.skipped.length;
 
   const applicantName = `${record.first_name || ''} ${record.last_name || ''}`.trim();
   const subject = `New Funding Application - ${applicantName} - No Limit Capital`;
@@ -1015,13 +1071,15 @@ async function emailApplicationPdf(record, pdfData) {
     '',
     `Application ID: ${record.id}`,
     `Submitted: ${record.createdAt ? new Date(record.createdAt).toLocaleString() : new Date().toLocaleString()}`,
+    `Bank statements attached: ${attachedStatementCount}`,
+    skippedStatementCount > 0 ? `Bank statements not attached: ${skippedStatementCount}` : '',
     '',
-    'Please see the attached PDF for complete application details.',
+    'Please see the attached PDFs for complete application details and uploaded bank statements.',
     '',
     '---',
     'No Limit Capital',
     'www.nolimitcap.net',
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 
   const htmlBody = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -1046,8 +1104,10 @@ async function emailApplicationPdf(record, pdfData) {
         <div style="margin-top: 20px; padding: 15px; background: #1a56db; color: white; border-radius: 8px;">
           <p style="margin: 0;"><strong>Application ID:</strong> ${record.id}</p>
           <p style="margin: 5px 0 0 0;"><strong>Submitted:</strong> ${record.createdAt ? new Date(record.createdAt).toLocaleString() : new Date().toLocaleString()}</p>
+          <p style="margin: 5px 0 0 0;"><strong>Bank statements attached:</strong> ${attachedStatementCount}</p>
         </div>
-        <p style="margin-top: 20px; color: #64748b;">Please see the attached PDF for complete application details.</p>
+        <p style="margin-top: 20px; color: #64748b;">Please see the attached PDFs for complete application details and uploaded bank statements.</p>
+        ${skippedStatementCount > 0 ? `<p style="margin-top: 8px; color: #b45309;">${skippedStatementCount} uploaded bank statement file(s) were saved with the application but not attached because of email attachment limits.</p>` : ''}
       </div>
       <div style="background: #1e293b; padding: 15px; text-align: center; color: #94a3b8;">
         <p style="margin: 0;">No Limit Capital | www.nolimitcap.net</p>
@@ -1061,7 +1121,12 @@ async function emailApplicationPdf(record, pdfData) {
       content: pdfData.buffer,
       contentType: 'application/pdf',
     },
+    ...bankStatementResult.attachments,
   ];
+  record.bankStatementEmailAttachments = attachedStatementCount;
+  if (skippedStatementCount > 0) {
+    record.bankStatementEmailAttachmentSkipped = bankStatementResult.skipped;
+  }
 
   // Try SES first (primary production provider with raw MIME PDF attachment support).
   let result = await sendEmailViaSes(recipients, subject, textBody, htmlBody, attachments);
@@ -1616,7 +1681,7 @@ app.post('/api/apply', applyRateLimiter, upload.array('bank_statements', 10), as
     }
 
     // Send email with PDF
-    const mailResult = await emailApplicationPdf(record, pdfData);
+    const mailResult = await emailApplicationPdf(record, pdfData, files);
     record.pdfStatus = 'generated';
     record.emailStatus = mailResult.status;
     if (mailResult.messageId) {

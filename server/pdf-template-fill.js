@@ -182,6 +182,15 @@ async function embedSignatureImage(pdfDoc, page, form, fieldName, dataUri) {
       width:  dims.width,
       height: dims.height,
     });
+
+    // The template signature fields use a white AcroForm background that renders
+    // above page content and hides drawn images unless the field is removed.
+    try {
+      form.removeField(tf);
+    } catch (removeErr) {
+      console.warn(`[pdf-fill] Could not remove signature field "${fieldName}":`, removeErr.message);
+    }
+
     return true;
   } catch (err) {
     console.warn(`[pdf-fill] Could not embed signature for "${fieldName}":`, err.message);
@@ -231,7 +240,7 @@ async function generateApplicationPdfFromTemplate(record, options = {}) {
       // Try to embed the drawn/uploaded image; use owner name on failure
       const ok = await embedSignatureImage(pdfDoc, page, form, field, raw);
       if (!ok) setTextField(form, field, fallback);
-      // On success: image is drawn on page, text field stays blank (transparent overlay)
+      // On success: image is drawn on page and the overlay field is removed
     } else if (raw && raw.trim()) {
       // Plain typed text signature
       setTextField(form, field, raw.trim());

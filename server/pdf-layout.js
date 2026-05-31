@@ -164,33 +164,21 @@ function drawLogoHeader(doc, options = {}) {
   }
 
   if (logoImage) {
-    // For raster logos, render icon on top and company name below.
-    const iconSize = Math.max(30, Math.round(50 * logoScale));
-    const textGap = 6;
-    const textFontSize = Math.max(14, Math.round(19 * logoScale));
-    const textStyle = {
-      lineBreak: false,
-      characterSpacing: 0.8,
-    };
-    doc.font("Times-Bold").fontSize(textFontSize);
-    const logoX = Math.round((doc.page.width - iconSize) / 2);
+    // Full raster logo (includes company name on dark background).
+    const logoSize = Math.min(
+      availableWidth - 10,
+      Math.max(80, Math.round(160 * logoScale)),
+    );
+    const logoX = Math.round((doc.page.width - logoSize) / 2);
     const logoY = margin - 3;
 
     doc.image(logoImage, logoX, logoY, {
-      fit: [iconSize, iconSize],
+      fit: [logoSize, logoSize],
       align: "center",
       valign: "center",
     });
-    const textY = logoY + iconSize + textGap;
-    doc
-      .fillColor("#0f2f3f")
-      .text(companyName, margin, textY, {
-        ...textStyle,
-        width: availableWidth,
-        align: "center",
-      });
 
-    const dividerY = textY + textFontSize + 6;
+    const dividerY = logoY + logoSize + 6;
     doc.strokeColor("#1a56db").lineWidth(1.2);
     doc
       .moveTo(margin, dividerY)

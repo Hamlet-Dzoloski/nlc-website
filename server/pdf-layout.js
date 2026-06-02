@@ -2,6 +2,13 @@ const fs = require("fs");
 const path = require("path");
 const PDFDocument = require("pdfkit");
 const SVGtoPDF = require("svg-to-pdfkit");
+const {
+  getPngDimensions,
+  getRasterLogoHeaderLayout,
+  loadLogoAspectRatio,
+} = require("./pdf-header-metrics");
+const { resolveLayoutConfig } = require("./pdf-field-coords");
+const { AUTHORIZATION_TEXT } = require("./pdf-auth-terms");
 
 const WEBSITE_LOGO_PATH = path.join(
   __dirname,
@@ -11,15 +18,6 @@ const WEBSITE_LOGO_PATH = path.join(
   'logo.png',
   //'header-logo.svg',
 );
-const AUTHORIZATION_TEXT =
-  'By signing below, the Business and Owner(s) identified above (individually, an "Applicant") each represents, acknowledges, and agrees that: ' +
-  "(1) all information and documents provided in connection with this application are true, accurate, and complete; " +
-  '(2) Applicant will immediately notify Biz Bulker Inc dba No Limit Capital ("No Limit Capital") of any change in the Business financial condition; ' +
-  '(3) Applicant understands that No Limit Capital may share this information with its representatives, successors, assigns, affiliates and partners as well as third-party lenders/funders and their servicers and financial institutions ("Recipients"); ' +
-  "(4) Applicant authorizes No Limit Capital and Recipients to request and receive any investigative reports, consumer credit reports, trade references, statements from creditors or financial institutions, verifications of information, or any other information that No Limit Capital and/or Recipients deem necessary; " +
-  "(5) Applicant waives and releases any claims against No Limit Capital, Recipients and any information-providers arising from any act or omission relating to the requesting, receiving, or release of information; " +
-  "(6) each Owner of the Business represents that he or she is authorized to sign and submit this application on behalf of Business.";
-
 const REQUIRED_FIELDS = new Set([
   "loan_amount",
   "funding_timeline",
@@ -164,28 +162,32 @@ function drawLogoHeader(doc, options = {}) {
   }
 
   if (logoImage) {
-    // Full raster logo (includes company name on dark background).
-    const logoSize = Math.min(
-      availableWidth - 10,
-      Math.max(80, Math.round(160 * logoScale)),
+    const logoBuffer = Buffer.isBuffer(logoImage) ? logoImage : Buffer.from(logoImage);
+    const dims = getPngDimensions(logoBuffer);
+    const aspect =
+      options.logoAspect ||
+      (dims.width && dims.height ? dims.width / dims.height : loadLogoAspectRatio());
+    const layout = getRasterLogoHeaderLayout(
+      doc.page.width,
+      margin,
+      logoScale,
+      aspect,
     );
-    const logoX = Math.round((doc.page.width - logoSize) / 2);
-    const logoY = margin - 3;
 
-    doc.image(logoImage, logoX, logoY, {
-      fit: [logoSize, logoSize],
+    doc.image(logoImage, layout.logoX, layout.logoY, {
+      fit: [layout.logoW, layout.logoH],
       align: "center",
       valign: "center",
     });
 
-    const dividerY = logoY + logoSize + 6;
+    const dividerY = layout.dividerY;
     doc.strokeColor("#1a56db").lineWidth(1.2);
     doc
       .moveTo(margin, dividerY)
       .lineTo(doc.page.width - margin, dividerY)
       .stroke();
     doc.fillColor("#000000");
-    return dividerY + 7;
+    return layout.headerBottom;
   }
 
   // Fallback: centered text-only header if logo cannot be loaded
@@ -674,34 +676,6 @@ function createLayoutConfig(scale = 1, options = {}) {
   };
 }
 
-function estimateBodyHeight(sections, config) {
-  let rowsHeight = 0;
-  sections.forEach((section) => {
-    section.rows.forEach((row) => {
-      rowsHeight += config.rowHeight;
-    });
-  });
-
-  const sectionCount = sections.length;
-  const authorizationHeight =
-    config.sectionHeaderHeight +
-    config.authorizationLabelGap +
-    config.authorizationTextHeight +
-    config.authorizationAfterTermsGap +
-    config.authorizationLineGap * 4 +
-    config.authorizationOwnerGap * 2;
-
-  return (
-    sectionCount * config.sectionHeaderHeight +
-    rowsHeight +
-    Math.max(0, sectionCount - 1) * config.sectionGap +
-    config.sectionGap +
-    authorizationHeight +
-    config.legendHeight +
-    16
-  ); // footer and breathing room
-}
-
 function renderOnePageLayout(doc, record, options = {}) {
   const pageMargin = doc.page.margins.left;
   const contentX = pageMargin;
@@ -710,13 +684,9 @@ function renderOnePageLayout(doc, record, options = {}) {
   let y = drawLogoHeader(doc, options);
   const sections = buildSections(record);
   const showEmptyPlaceholder = options.emptyFields !== true;
-  let config = createLayoutConfig(1, { showEmptyPlaceholder });
-  const availableHeight = doc.page.height - doc.page.margins.bottom - y;
-  const estimatedHeight = estimateBodyHeight(sections, config);
-  if (estimatedHeight > availableHeight) {
-    const scale = availableHeight / estimatedHeight;
-    config = createLayoutConfig(scale, { showEmptyPlaceholder });
-  }
+  const logoScale = Number(options.headerScale || 0.75);
+  const { scale } = resolveLayoutConfig(pageMargin, logoScale, doc.page.height, y);
+  const config = createLayoutConfig(scale, { showEmptyPlaceholder });
   y = drawLegend(doc, contentX, y, contentWidth, config);
 
   sections.forEach((section, sectionIndex) => {

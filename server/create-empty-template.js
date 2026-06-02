@@ -30,7 +30,7 @@ async function generateVisualPdf(margin, logoScale) {
   return generateApplicationPdfBuffer({}, {
     companyName:  'No Limit Capital',
     margin,
-    logoPath:     path.join(__dirname, '..', 'assets', 'images', 'logo.png'),
+    logoPath:     path.join(__dirname, '..', 'assets', 'images', 'logonlc.png'),
     headerScale:  logoScale,
     emptyFields:  true,
   });

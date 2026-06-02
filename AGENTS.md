@@ -1,6 +1,6 @@
 ## Learned User Preferences
 - For application PDFs, the user expects a one-page, readable, properly aligned form with boxed fields, generous spacing, and no overflow pages.
-- Application PDF headers should use the actual site/company logo with the company name centered or beside it, and must not reuse Creative Capital or other example branding.
+- Application PDF headers should use the canonical site logo (`assets/images/logonlc.png`) as a resized full emblem only (no separate company-name text drawn under the logo), and must not reuse Creative Capital or other example branding.
 - The user prefers the visible brand name to be `No Limit Capital` rather than `NoLimitCap Solutions` when discussing website/PDF branding.
 - Application submission UX should clearly confirm success or failure: after success the submit button should read `Application Submitted`, stay disabled, and avoid overpromising internal email delivery unless the backend confirms it.
 - When asked to compare or replicate a PDF, match the cited ideal output closely instead of treating example documents as final branding.
@@ -12,3 +12,6 @@
 - Application PDF footer branding should include `@Biz Bulker Inc, 2026` and should not include a `No Limit Capital` bottom footnote.
 - The website application supports drawn and uploaded signatures; signatures must persist during scrolling, fit the PDF signature fields, and remain visible in generated PDFs (remove the fillable template AcroForm signature field white overlay after embedding).
 - Uploaded bank statement PDFs should be attached to the admin application email to `info@nolimitcap.net` along with the generated application PDF, within the configured email attachment size cap (`MAX_EMAIL_ATTACHMENT_MB`, default 25MB).
+- PDF application header/logo sizing is centralized in `server/pdf-header-metrics.js`; the canonical raster logo is `assets/images/logonlc.png`.
+- Fillable AcroForm coordinates must stay synced with the pdfkit visual layout via `server/pdf-field-coords.js`, `server/pdf-auth-terms.js`, and shared `resolveLayoutConfig`; regenerate `server/pdf-templates/nolimitcap-empty-application.pdf` with `node server/create-empty-template.js` after layout changes.
+- Authorization AcroForm field Y positions must use the measured wrapped terms text height from `pdf-auth-terms.js`, not the maximum terms box height.

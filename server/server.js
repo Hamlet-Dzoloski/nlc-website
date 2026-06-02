@@ -47,6 +47,7 @@ const GENERATED_PDF_DIR = path.join(WRITABLE_ROOT, 'generated-pdfs');
 // Use process.cwd() to locate assets reliably in Vercel bundle
 const PROJECT_ROOT = IS_SERVERLESS ? process.cwd() : path.join(__dirname, '..');
 const LOGO_PATH = path.join(PROJECT_ROOT, 'assets', 'images', 'logo.png');
+const PDF_HEADER_LOGO_PATH = path.join(PROJECT_ROOT, 'assets', 'images', 'logonlc.png');
 const PDF_TEMPLATE_DIR = path.join(__dirname, 'pdf-templates');
 const PDF_FORM_TEMPLATE_PATH = path.join(PDF_TEMPLATE_DIR, 'nolimitcap-empty-application.pdf');
 
@@ -590,7 +591,7 @@ async function generateApplicationPdf(record) {
     buffer = await generateFillablePdfFromLayout(sanitized, {
       companyName: 'No Limit Capital',
       margin: 24,
-      logoPath: LOGO_PATH,
+      logoPath: PDF_HEADER_LOGO_PATH,
       headerScale: 0.75,
     });
   }

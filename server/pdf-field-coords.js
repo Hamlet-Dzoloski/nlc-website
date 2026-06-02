@@ -1,5 +1,12 @@
 'use strict';
 
+const {
+  DEFAULT_LOGO_PATH,
+  getRasterLogoHeaderLayout,
+  loadLogoAspectRatio,
+} = require('./pdf-header-metrics');
+const { measureAuthorizationTermsAdvance } = require('./pdf-auth-terms');
+
 /**
  * pdf-field-coords.js
  *
@@ -40,14 +47,13 @@ function createLayoutConfig(scale = 1) {
   };
 }
 
-function estimateBodyHeight(sections, config) {
+function estimateBodyHeight(sections, config, contentWidth = 564) {
   let rowsHeight = 0;
   sections.forEach((s) => s.rows.forEach(() => { rowsHeight += config.rowHeight; }));
+  const termsAdvance = measureAuthorizationTermsAdvance(config, contentWidth);
   const authorizationHeight =
     config.sectionHeaderHeight +
-    config.authorizationLabelGap +
-    config.authorizationTextHeight +
-    config.authorizationAfterTermsGap +
+    termsAdvance +
     config.authorizationLineGap * 3 +
     config.authorizationSignatureExtraGap +
     config.authorizationOwnerGap * 2;
@@ -100,14 +106,29 @@ function buildSectionsWithNames() {
   ];
 }
 
-/** Estimates height of drawLogoHeader (raster logo, margin=24, logoScale=0.75) */
-function estimateHeaderHeight(margin, logoScale) {
-  const iconSize     = Math.max(30, Math.round(50 * logoScale));
-  const textFontSize = Math.max(14, Math.round(19 * logoScale));
-  const logoY        = margin - 3;
-  const textY        = logoY + iconSize + 6;
-  const dividerY     = textY + textFontSize + 6;
-  return dividerY + 7;
+/** Estimates height of drawLogoHeader — must match pdf-layout raster branch. */
+function estimateHeaderHeight(margin, logoScale, logoAspect = loadLogoAspectRatio(DEFAULT_LOGO_PATH)) {
+  return getRasterLogoHeaderLayout(612, margin, logoScale, logoAspect).headerBottom;
+}
+
+/**
+ * Shared scale/config resolution for pdfkit render + AcroForm overlay.
+ * Pass headerBottom from drawLogoHeader when available so both paths match exactly.
+ */
+function resolveLayoutConfig(margin = 24, logoScale = 0.75, pageHeight = 792, headerBottom = null) {
+  const logoAspect = loadLogoAspectRatio(DEFAULT_LOGO_PATH);
+  const headerHeight = headerBottom ?? estimateHeaderHeight(margin, logoScale, logoAspect);
+  const sections = buildSectionsWithNames();
+  let config = createLayoutConfig(1);
+  const availableH = pageHeight - margin - headerHeight;
+  const contentWidth = 612 - margin * 2;
+  const estimatedH = estimateBodyHeight(sections, config, contentWidth);
+  let scale = 1;
+  if (estimatedH > availableH) {
+    scale = availableH / estimatedH;
+    config = createLayoutConfig(scale);
+  }
+  return { config, scale, headerHeight };
 }
 
 /**
@@ -118,15 +139,7 @@ function computeFieldCoords(pageWidth = 612, margin = 24, logoScale = 0.75) {
   const contentWidth = pageWidth - margin * 2;
   const sections     = buildSectionsWithNames();
   const pageHeight   = 792;
-  const headerHeight = estimateHeaderHeight(margin, logoScale);
-  let   config       = createLayoutConfig(1);
-  const availableH   = pageHeight - 36 - headerHeight;
-  const estimatedH   = estimateBodyHeight(sections, config);
-  let   scale        = 1;
-  if (estimatedH > availableH) {
-    scale  = availableH / estimatedH;
-    config = createLayoutConfig(scale);
-  }
+  const { config, scale, headerHeight } = resolveLayoutConfig(margin, logoScale, pageHeight);
 
   const coords = [];
   let y = headerHeight + config.legendHeight;
@@ -166,9 +179,9 @@ function computeFieldCoords(pageWidth = 612, margin = 24, logoScale = 0.75) {
     if (sIdx < sections.length - 1) y += config.sectionGap;
   });
 
-  // Authorization section
+  // Authorization section — terms height must match drawAuthorizationTerms(), not max box
   y += config.sectionGap + config.sectionHeaderHeight;
-  y += config.authorizationLabelGap + config.authorizationTextHeight + config.authorizationAfterTermsGap;
+  y += measureAuthorizationTermsAdvance(config, contentWidth);
 
   const colGap = config.authorizationColumnGap;
   const colW   = Math.floor((contentWidth - colGap) / 2);
@@ -178,30 +191,29 @@ function computeFieldCoords(pageWidth = 612, margin = 24, logoScale = 0.75) {
   const fHeight = Math.max(10, lineH - 2);
 
   const authRows = [
-    { left: 'sig_owner1_name',  right: 'sig_owner2_name',            lf: 0.28, shift: 0 },
-    { left: 'signature',        right: 'signature_additional',        lf: 0.24, shift: 0, extraGapBefore: config.authorizationSignatureExtraGap },
-    { left: 'application_date', right: 'application_date_additional', lf: 0.08, shift: 0 },
+    { left: 'sig_owner1_name',  right: 'sig_owner2_name',            lf: 0.28 },
+    { left: 'signature',        right: 'signature_additional',        lf: 0.24, extraGapBefore: config.authorizationSignatureExtraGap },
+    { left: 'application_date', right: 'application_date_additional', lf: 0.08 },
   ];
 
-  authRows.forEach(({ left: leftName, right: rightName, lf, shift, extraGapBefore }) => {
+  authRows.forEach(({ left: leftName, right: rightName, lf, extraGapBefore }) => {
     if (extraGapBefore) y += extraGapBefore;
 
     const fieldOffset = Math.round(rowW * lf);
-    // For signature row, make the field taller to span the extra gap above
-    const rowFHeight = extraGapBefore ? fHeight + extraGapBefore : fHeight;
-    const fieldY = y + config.authorizationLineBaselineOffset - rowFHeight - 2 - shift;
+    const rowHeight = extraGapBefore ? fHeight + extraGapBefore : fHeight;
+    const fieldY = y + config.authorizationLineBaselineOffset - rowHeight - 2;
 
     const leftX  = margin + inset + fieldOffset;
     const leftW  = (margin + colW)         - leftX  - 4;
     const rightX = margin + colW + colGap + inset + fieldOffset;
     const rightW = (margin + contentWidth) - rightX - 4;
 
-    coords.push({ fieldName: leftName,  x: leftX,  y: fieldY, width: Math.max(20, leftW),  height: rowFHeight });
-    coords.push({ fieldName: rightName, x: rightX, y: fieldY, width: Math.max(20, rightW), height: rowFHeight });
+    coords.push({ fieldName: leftName,  x: leftX,  y: fieldY, width: Math.max(20, leftW),  height: rowHeight });
+    coords.push({ fieldName: rightName, x: rightX, y: fieldY, width: Math.max(20, rightW), height: rowHeight });
     y += lineH;
   });
 
   return { coords, config, scale };
 }
 
-module.exports = { computeFieldCoords };
+module.exports = { computeFieldCoords, resolveLayoutConfig, estimateHeaderHeight };

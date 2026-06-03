@@ -77,7 +77,8 @@ async function overlayAcroFormFields(pdfBuffer, coords, pageHeight) {
     });
   });
 
-  return Buffer.from(await pdfDoc.save());
+  // PDF 1.7 object streams break save/open in Adobe Acrobat; keep classic xref tables.
+  return Buffer.from(await pdfDoc.save({ useObjectStreams: false }));
 }
 
 // --------------------------------------------------------------------------

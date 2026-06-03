@@ -250,7 +250,7 @@ async function generateApplicationPdfFromTemplate(record, options = {}) {
     }
   }
 
-  return Buffer.from(await pdfDoc.save());
+  return Buffer.from(await pdfDoc.save({ useObjectStreams: false }));
 }
 
 // ---------------------------------------------------------------------------
@@ -322,7 +322,7 @@ async function generateFillablePdfFromLayout(record, options = {}) {
     }
   }
 
-  return Buffer.from(await pdfDoc.save());
+  return Buffer.from(await pdfDoc.save({ useObjectStreams: false }));
 }
 
 module.exports = { generateApplicationPdfFromTemplate, generateFillablePdfFromLayout };

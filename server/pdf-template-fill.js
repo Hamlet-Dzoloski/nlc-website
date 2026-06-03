@@ -8,10 +8,13 @@ const { computeFieldCoords } = require('./pdf-field-coords');
 // ---------------------------------------------------------------------------
 // Shared helper: white background on all AcroForm field widgets
 // ---------------------------------------------------------------------------
+const SIGNATURE_FIELD_NAMES = new Set(['signature', 'signature_additional']);
+
 function clearFieldHighlights(pdfDoc, form) {
   // MK/BG = [1] = DeviceGray white — overrides the blue viewer highlight.
   const white = pdfDoc.context.obj([PDFNumber.of(1)]);
   form.getFields().forEach((f) => {
+    if (SIGNATURE_FIELD_NAMES.has(f.getName())) return;
     f.acroField.getWidgets().forEach((w) => {
       try {
         const mk = w.getOrCreateMK();
@@ -19,6 +22,19 @@ function clearFieldHighlights(pdfDoc, form) {
         mk.delete(PDFName.of('BC'));
       } catch (_) {}
     });
+  });
+}
+
+/** Transparent widget so a drawn signature image is not covered by the field layer. */
+function clearSignatureFieldOverlay(tf) {
+  tf.setText('');
+  tf.enableReadOnly();
+  tf.acroField.getWidgets().forEach((w) => {
+    try {
+      const mk = w.getOrCreateMK();
+      mk.delete(PDFName.of('BG'));
+      mk.delete(PDFName.of('BC'));
+    } catch (_) {}
   });
 }
 
@@ -183,13 +199,9 @@ async function embedSignatureImage(pdfDoc, page, form, fieldName, dataUri) {
       height: dims.height,
     });
 
-    // The template signature fields use a white AcroForm background that renders
-    // above page content and hides drawn images unless the field is removed.
-    try {
-      form.removeField(tf);
-    } catch (removeErr) {
-      console.warn(`[pdf-fill] Could not remove signature field "${fieldName}":`, removeErr.message);
-    }
+    // Keep the AcroForm field (removing it breaks save/print in Adobe Acrobat).
+    // Clear the white widget background so the image stays visible.
+    clearSignatureFieldOverlay(tf);
 
     return true;
   } catch (err) {

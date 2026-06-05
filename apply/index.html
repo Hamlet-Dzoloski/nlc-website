@@ -855,8 +855,14 @@
 
       function syncAllDrawPads() {
         ['1', '2'].forEach(id => {
+          const hidden = document.getElementById('sig-value-' + id);
+          const uploadPanel = document.querySelector('[data-panel="upload-' + id + '"]');
+          const onUploadTab = uploadPanel && !uploadPanel.hidden;
+          if (onUploadTab) return;
           if (pads[id] && !pads[id].isEmpty()) {
             syncDraw(id);
+          } else if (hidden) {
+            hidden.value = '';
           }
         });
       }
@@ -876,7 +882,6 @@
         } else {
           drawPanel.hidden  = true;
           uploadPanel.hidden = false;
-          // If there's already an uploaded preview, keep the hidden value
         }
       }
 

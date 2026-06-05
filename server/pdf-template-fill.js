@@ -25,11 +25,36 @@ function clearFieldHighlights(pdfDoc, form) {
   });
 }
 
-/** Transparent widget so a drawn signature image is not covered by the field layer. */
+function stripWidgetAppearance(widget) {
+  try {
+    widget.dict.delete(PDFName.of('AP'));
+  } catch (_) {}
+}
+
+/** White appearance streams on signature fields cover embedded images — skip them. */
+function updateNonSignatureAppearances(form, font) {
+  form.getFields().forEach((field) => {
+    if (SIGNATURE_FIELD_NAMES.has(field.getName())) return;
+    try {
+      if (typeof field.defaultUpdateAppearances === 'function') {
+        field.defaultUpdateAppearances(font);
+      }
+    } catch (_) {}
+  });
+}
+
+/**
+ * After embedding a signature image, remove widget backgrounds and appearance
+ * streams so Acrobat/viewers paint the page image instead of a white field box.
+ */
 function clearSignatureFieldOverlay(tf) {
   tf.setText('');
   tf.enableReadOnly();
+  try {
+    tf.acroField.dict.delete(PDFName.of('AP'));
+  } catch (_) {}
   tf.acroField.getWidgets().forEach((w) => {
+    stripWidgetAppearance(w);
     try {
       const mk = w.getOrCreateMK();
       mk.delete(PDFName.of('BG'));
@@ -199,9 +224,14 @@ async function embedSignatureImage(pdfDoc, page, form, fieldName, dataUri) {
       height: dims.height,
     });
 
-    // Keep the AcroForm field (removing it breaks save/print in Adobe Acrobat).
-    // Clear the white widget background so the image stays visible.
-    clearSignatureFieldOverlay(tf);
+    // Remove the widget so pre-baked white appearance streams cannot cover the image.
+    // useObjectStreams: false on save keeps Acrobat able to save the remaining form.
+    try {
+      form.removeField(tf);
+    } catch (removeErr) {
+      console.warn(`[pdf-fill] Could not remove signature field "${fieldName}":`, removeErr.message);
+      clearSignatureFieldOverlay(tf);
+    }
 
     return true;
   } catch (err) {
@@ -230,15 +260,14 @@ async function generateApplicationPdfFromTemplate(record, options = {}) {
   const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const page      = pdfDoc.getPages()[0];
 
-  // 1. Fill all regular text fields
+  // 1. Fill all regular text fields (signature images handled below)
   const fieldMap = buildFieldMappings(record);
   Object.entries(fieldMap).forEach(([name, value]) => setTextField(form, name, value));
 
-  // Set white background before generating appearances so it's baked into AP streams
   clearFieldHighlights(pdfDoc, form);
-  form.updateFieldAppearances(helvetica);
+  updateNonSignatureAppearances(form, helvetica);
 
-  // 2. Handle signature fields — image OR typed text, never the raw data URI
+  // 2. Signature images — draw on page, then remove field so white AP cannot cover it
   const owner1Name = `${normalizeValue(record.owner_first_name)} ${normalizeValue(record.owner_last_name)}`.trim();
   const owner2Name = `${normalizeValue(record.additional_owner_first_name)} ${normalizeValue(record.additional_owner_last_name)}`.trim();
 
@@ -252,7 +281,7 @@ async function generateApplicationPdfFromTemplate(record, options = {}) {
       // Try to embed the drawn/uploaded image; use owner name on failure
       const ok = await embedSignatureImage(pdfDoc, page, form, field, raw);
       if (!ok) setTextField(form, field, fallback);
-      // On success: image is drawn on page and the overlay field is removed
+      // On success: image is drawn on page; signature field stays read-only with transparent overlay
     } else if (raw && raw.trim()) {
       // Plain typed text signature
       setTextField(form, field, raw.trim());
@@ -310,7 +339,7 @@ async function generateFillablePdfFromLayout(record, options = {}) {
   }
 
   clearFieldHighlights(pdfDoc, form);
-  form.updateFieldAppearances(helvetica);
+  updateNonSignatureAppearances(form, helvetica);
 
   // Step 3: Fill all text fields with record values
   const fieldMap = buildFieldMappings(record);

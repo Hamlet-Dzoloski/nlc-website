@@ -2,66 +2,15 @@
 
 const fs   = require('fs/promises');
 const path = require('path');
-const { PDFDocument, StandardFonts, PDFName, PDFNumber } = require('pdf-lib');
+const { PDFDocument, StandardFonts } = require('pdf-lib');
 const { computeFieldCoords } = require('./pdf-field-coords');
-
-// ---------------------------------------------------------------------------
-// Shared helper: white background on all AcroForm field widgets
-// ---------------------------------------------------------------------------
-const SIGNATURE_FIELD_NAMES = new Set(['signature', 'signature_additional']);
-
-function clearFieldHighlights(pdfDoc, form) {
-  // MK/BG = [1] = DeviceGray white — overrides the blue viewer highlight.
-  const white = pdfDoc.context.obj([PDFNumber.of(1)]);
-  form.getFields().forEach((f) => {
-    if (SIGNATURE_FIELD_NAMES.has(f.getName())) return;
-    f.acroField.getWidgets().forEach((w) => {
-      try {
-        const mk = w.getOrCreateMK();
-        mk.set(PDFName.of('BG'), white);
-        mk.delete(PDFName.of('BC'));
-      } catch (_) {}
-    });
-  });
-}
-
-function stripWidgetAppearance(widget) {
-  try {
-    widget.dict.delete(PDFName.of('AP'));
-  } catch (_) {}
-}
-
-/** White appearance streams on signature fields cover embedded images — skip them. */
-function updateNonSignatureAppearances(form, font) {
-  form.getFields().forEach((field) => {
-    if (SIGNATURE_FIELD_NAMES.has(field.getName())) return;
-    try {
-      if (typeof field.defaultUpdateAppearances === 'function') {
-        field.defaultUpdateAppearances(font);
-      }
-    } catch (_) {}
-  });
-}
-
-/**
- * After embedding a signature image, remove widget backgrounds and appearance
- * streams so Acrobat/viewers paint the page image instead of a white field box.
- */
-function clearSignatureFieldOverlay(tf) {
-  tf.setText('');
-  tf.enableReadOnly();
-  try {
-    tf.acroField.dict.delete(PDFName.of('AP'));
-  } catch (_) {}
-  tf.acroField.getWidgets().forEach((w) => {
-    stripWidgetAppearance(w);
-    try {
-      const mk = w.getOrCreateMK();
-      mk.delete(PDFName.of('BG'));
-      mk.delete(PDFName.of('BC'));
-    } catch (_) {}
-  });
-}
+const {
+  clearFieldHighlights,
+  updateNonSignatureAppearances,
+  clearSignatureFieldOverlay,
+  finalizeSignatureFields,
+  ACROBAT_SAFE_SAVE_OPTIONS,
+} = require('./pdf-form-helpers');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -224,14 +173,8 @@ async function embedSignatureImage(pdfDoc, page, form, fieldName, dataUri) {
       height: dims.height,
     });
 
-    // Remove the widget so pre-baked white appearance streams cannot cover the image.
-    // useObjectStreams: false on save keeps Acrobat able to save the remaining form.
-    try {
-      form.removeField(tf);
-    } catch (removeErr) {
-      console.warn(`[pdf-fill] Could not remove signature field "${fieldName}":`, removeErr.message);
-      clearSignatureFieldOverlay(tf);
-    }
+    // Keep the field for a valid AcroForm tree (Acrobat save). Strip AP/BG so the image shows.
+    clearSignatureFieldOverlay(tf);
 
     return true;
   } catch (err) {
@@ -291,7 +234,9 @@ async function generateApplicationPdfFromTemplate(record, options = {}) {
     }
   }
 
-  return Buffer.from(await pdfDoc.save({ useObjectStreams: false }));
+  finalizeSignatureFields(form);
+
+  return Buffer.from(await pdfDoc.save(ACROBAT_SAFE_SAVE_OPTIONS));
 }
 
 // ---------------------------------------------------------------------------
@@ -363,7 +308,9 @@ async function generateFillablePdfFromLayout(record, options = {}) {
     }
   }
 
-  return Buffer.from(await pdfDoc.save({ useObjectStreams: false }));
+  finalizeSignatureFields(form);
+
+  return Buffer.from(await pdfDoc.save(ACROBAT_SAFE_SAVE_OPTIONS));
 }
 
 module.exports = { generateApplicationPdfFromTemplate, generateFillablePdfFromLayout };

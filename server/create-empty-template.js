@@ -16,11 +16,17 @@
 
 const fs   = require('fs');
 const path = require('path');
-const { PDFDocument: PdfLib, StandardFonts, PDFName, PDFNumber } = require('pdf-lib');
+const { PDFDocument: PdfLib, StandardFonts } = require('pdf-lib');
 
 const OUTPUT_PATH = path.join(__dirname, 'pdf-templates', 'nolimitcap-empty-application.pdf');
 
 const { computeFieldCoords } = require('./pdf-field-coords');
+const {
+  clearFieldHighlights,
+  updateNonSignatureAppearances,
+  clearSignatureFieldOverlay,
+  ACROBAT_SAFE_SAVE_OPTIONS,
+} = require('./pdf-form-helpers');
 
 // --------------------------------------------------------------------------
 // Step 1: Generate pdfkit visual PDF (original branded layout, blank values)
@@ -63,22 +69,17 @@ async function overlayAcroFormFields(pdfBuffer, coords, pageHeight) {
     }
   }
 
-  form.updateFieldAppearances(helvetica);
+  updateNonSignatureAppearances(form, helvetica);
+  clearFieldHighlights(pdfDoc, form);
 
-  // MK/BG = [1] (DeviceGray white) — overrides PDF viewer blue highlight
-  const white = pdfDoc.context.obj([PDFNumber.of(1)]);
-  form.getFields().forEach((f) => {
-    f.acroField.getWidgets().forEach((w) => {
-      try {
-        const mk = w.getOrCreateMK();
-        mk.set(PDFName.of('BG'), white);
-        mk.delete(PDFName.of('BC'));
-      } catch (_) {}
-    });
+  // Blank signature boxes stay transparent (no white AP) so filled images stay visible.
+  ['signature', 'signature_additional'].forEach((name) => {
+    try {
+      clearSignatureFieldOverlay(form.getTextField(name), { readOnly: false });
+    } catch (_) {}
   });
 
-  // PDF 1.7 object streams break save/open in Adobe Acrobat; keep classic xref tables.
-  return Buffer.from(await pdfDoc.save({ useObjectStreams: false }));
+  return Buffer.from(await pdfDoc.save(ACROBAT_SAFE_SAVE_OPTIONS));
 }
 
 // --------------------------------------------------------------------------

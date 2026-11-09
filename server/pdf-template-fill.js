@@ -211,26 +211,14 @@ async function generateApplicationPdfFromTemplate(record, options = {}) {
   updateNonSignatureAppearances(form, helvetica);
 
   // 2. Signature images — draw on page, then remove field so white AP cannot cover it
-  const owner1Name = `${normalizeValue(record.owner_first_name)} ${normalizeValue(record.owner_last_name)}`.trim();
-  const owner2Name = `${normalizeValue(record.additional_owner_first_name)} ${normalizeValue(record.additional_owner_last_name)}`.trim();
-
   const sigPairs = [
-    { field: 'signature',            raw: record.signature,            fallback: owner1Name },
-    { field: 'signature_additional', raw: record.signature_additional, fallback: owner2Name },
+    { field: 'signature',            raw: record.signature },
+    { field: 'signature_additional', raw: record.signature_additional },
   ];
 
-  for (const { field, raw, fallback } of sigPairs) {
-    if (isBase64Image(raw)) {
-      // Try to embed the drawn/uploaded image; use owner name on failure
-      const ok = await embedSignatureImage(pdfDoc, page, form, field, raw);
-      if (!ok) setTextField(form, field, fallback);
-      // On success: image is drawn on page; signature field stays read-only with transparent overlay
-    } else if (raw && raw.trim()) {
-      // Plain typed text signature
-      setTextField(form, field, raw.trim());
-    } else {
-      // Nothing provided — prefill with owner name
-      setTextField(form, field, fallback);
+  for (const { field, raw } of sigPairs) {
+    if (raw && (!isBase64Image(raw) || !await embedSignatureImage(pdfDoc, page, form, field, raw))) {
+      throw new Error(`Could not embed ${field}; the original signature must be retained for PDF retry.`);
     }
   }
 
@@ -289,22 +277,18 @@ async function generateFillablePdfFromLayout(record, options = {}) {
   // Step 3: Fill all text fields with record values
   const fieldMap = buildFieldMappings(record);
   Object.entries(fieldMap).forEach(([name, value]) => setTextField(form, name, value));
+  // Save disables automatic appearance rebuilding to protect signature images.
+  // Refresh text appearances after filling, not while the fields are still blank.
+  updateNonSignatureAppearances(form, helvetica);
 
   // Step 4: Handle signature fields
-  const owner1Name = `${normalizeValue(record.owner_first_name)} ${normalizeValue(record.owner_last_name)}`.trim();
-  const owner2Name = `${normalizeValue(record.additional_owner_first_name)} ${normalizeValue(record.additional_owner_last_name)}`.trim();
   const sigPairs = [
-    { field: 'signature',            raw: record.signature,            fallback: owner1Name },
-    { field: 'signature_additional', raw: record.signature_additional, fallback: owner2Name },
+    { field: 'signature',            raw: record.signature },
+    { field: 'signature_additional', raw: record.signature_additional },
   ];
-  for (const { field, raw, fallback } of sigPairs) {
-    if (isBase64Image(raw)) {
-      const ok = await embedSignatureImage(pdfDoc, page, form, field, raw);
-      if (!ok) setTextField(form, field, fallback);
-    } else if (raw && raw.trim()) {
-      setTextField(form, field, raw.trim());
-    } else {
-      setTextField(form, field, fallback);
+  for (const { field, raw } of sigPairs) {
+    if (raw && (!isBase64Image(raw) || !await embedSignatureImage(pdfDoc, page, form, field, raw))) {
+      throw new Error(`Could not embed ${field}; the original signature must be retained for PDF retry.`);
     }
   }
 

@@ -5,12 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/png" href="assets/images/favicon.png" />
     <title>Partner With Us | No Limit Capital</title>
+    <meta name="description" content="Connect with No Limit Capital about referral and business funding partnerships. Share your company details and discuss your clients' funding needs." />
+    <link rel="canonical" href="https://www.nolimitcap.net/partner.html" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="No Limit Capital" />
+    <meta property="og:title" content="Partner With Us | No Limit Capital" />
+    <meta property="og:description" content="Connect with No Limit Capital about referral and business funding partnerships. Share your company details and discuss your clients' funding needs." />
+    <meta property="og:url" content="https://www.nolimitcap.net/partner.html" />
+    <meta property="og:image" content="https://www.nolimitcap.net/assets/images/logonlc.png" />
+    <meta property="og:image:alt" content="No Limit Capital emblem" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Partner With Us | No Limit Capital" />
+    <meta name="twitter:description" content="Connect with No Limit Capital about referral and business funding partnerships. Share your company details and discuss your clients' funding needs." />
+    <meta name="twitter:image" content="https://www.nolimitcap.net/assets/images/logonlc.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Playfair+Display:wght@400;700&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&amp;family=Sora:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="assets/css/style.css" />
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     <header class="site-header">
       <div class="container nav">
         <a class="logo" href="index.html">
@@ -34,7 +48,7 @@
       </div>
     </header>
 
-    <main>
+    <main id="main-content" tabindex="-1">
       <section class="page-hero">
         <div class="container split">
           <div>
@@ -81,10 +95,10 @@
               <p>Share your pipeline details and our partnerships team will connect with you.</p>
             </div>
             <form data-submit data-form="partner">
-              <input type="text" name="name" placeholder="Full name" required />
-              <input type="text" name="company" placeholder="Company" required />
-              <input type="email" name="email" placeholder="Email" required />
-              <select name="partner_type">
+              <label class="field"><span>Full name</span><input type="text" name="name" autocomplete="name" required /></label>
+              <label class="field"><span>Company</span><input type="text" name="company" autocomplete="organization" required /></label>
+              <label class="field"><span>Email address</span><input type="email" name="email" autocomplete="email" required /></label>
+              <label class="field"><span>Partner type</span><select name="partner_type">
                 <option value="">Partner type</option>
                 <option value="broker">Loan Broker</option>
                 <option value="financial_advisor">Financial Advisor</option>
@@ -92,17 +106,17 @@
                 <option value="real_estate_agent">Real Estate Agent</option>
                 <option value="iso">ISO/Merchant Services</option>
                 <option value="other">Other</option>
-              </select>
-              <select name="pipeline_size">
+              </select></label>
+              <label class="field"><span>Monthly pipeline size</span><select name="pipeline_size">
                 <option value="">Monthly pipeline size</option>
                 <option value="under_50k">Under $50,000</option>
                 <option value="50k_100k">$50,000 - $100,000</option>
                 <option value="100k_250k">$100,000 - $250,000</option>
                 <option value="250k_500k">$250,000 - $500,000</option>
                 <option value="over_500k">Over $500,000</option>
-              </select>
+              </select></label>
               <button class="btn" type="submit">Submit Partnership</button>
-              <div class="form-message"></div>
+              <div class="form-message" role="status" aria-live="polite" hidden></div>
             </form>
           </div>
         </div>
@@ -143,8 +157,8 @@
       </div>
     </footer>
 
-    <script src="assets/js/config.js"></script>
-    <script src="assets/js/main.js"></script>
+    <script defer src="assets/js/config.js"></script>
+    <script defer src="assets/js/main.js"></script>
   </body>
 </html>
 

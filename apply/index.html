@@ -5,12 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/png" href="/assets/images/favicon.png" />
     <title>Apply Now | No Limit Capital</title>
+    <meta name="description" content="Apply for business funding with No Limit Capital. Provide your business details, add PDF bank statements, and complete the application authorization." />
+    <link rel="canonical" href="https://www.nolimitcap.net/apply/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="No Limit Capital" />
+    <meta property="og:title" content="Apply Now | No Limit Capital" />
+    <meta property="og:description" content="Apply for business funding with No Limit Capital. Provide your business details, add PDF bank statements, and complete the application authorization." />
+    <meta property="og:url" content="https://www.nolimitcap.net/apply/" />
+    <meta property="og:image" content="https://www.nolimitcap.net/assets/images/logonlc.png" />
+    <meta property="og:image:alt" content="No Limit Capital emblem" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Apply Now | No Limit Capital" />
+    <meta name="twitter:description" content="Apply for business funding with No Limit Capital. Provide your business details, add PDF bank statements, and complete the application authorization." />
+    <meta name="twitter:image" content="https://www.nolimitcap.net/assets/images/logonlc.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Playfair+Display:wght@400;700&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&amp;family=Sora:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/assets/css/style.css" />
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     <header class="site-header">
       <div class="container nav">
         <a class="logo" href="/index.html">
@@ -34,7 +48,7 @@
       </div>
     </header>
 
-    <main>
+    <main id="main-content" tabindex="-1">
       <section class="page-hero">
         <div class="container">
           <div class="eyebrow">Apply Now</div>
@@ -68,7 +82,7 @@
                 </div>
                 <div class="sidebar-box">
                   <h3>Secure Submission</h3>
-                  <p>Your information is encrypted and reviewed only by our funding team.</p>
+                  <p>See our Privacy Policy and the authorization below for details about how application information is used and shared.</p>
                 </div>
               </aside>
 
@@ -134,7 +148,7 @@
 
                     <label class="field checkbox-line" style="margin-top:12px;">
                       <input type="checkbox" name="contact_agreement" required />
-                      <span>I agree to the <a href="#" class="terms-link" data-open-modal="privacy-modal">Terms &amp; Privacy</a> provided by No Limit Capital and consent to text messages. *</span>
+                      <span>I agree to the <a href="/privacy.html" class="terms-link" data-open-modal="privacy-modal" aria-haspopup="dialog" aria-controls="privacy-modal">Terms &amp; Privacy</a> provided by No Limit Capital and consent to text messages. *</span>
                     </label>
                   </div>
 
@@ -294,14 +308,6 @@
                       <label class="field">
                         <span>Peak Months (if seasonal)</span>
                         <input type="text" name="peak_months" placeholder="e.g. Nov, Dec, Jan" />
-                      </label>
-                      <label class="field">
-                        <span>Application Agreement *</span>
-                        <select name="application_agreement" required>
-                          <option value="">Select</option>
-                          <option>Yes</option>
-                          <option>No</option>
-                        </select>
                       </label>
                     </div>
                   </div>
@@ -464,9 +470,13 @@
 
                     <h2 style="margin-top:28px;">Bank Statements</h2>
                     <div class="field">
-                      <span>Upload last 4 months of bank statements (PDF only)</span>
-                      <input type="file" name="bank_statements" accept="application/pdf" multiple />
-                      <small class="help-text">PDF only. Keep the combined upload under 25MB so statements can be attached to the email. You can skip and submit without files.</small>
+                      <label for="bank-statements">Upload last 4 months of bank statements (PDF only)</label>
+                      <input id="bank-statements" type="file" name="bank_statements" accept=".pdf,application/pdf" multiple aria-describedby="bank-statements-help bank-statements-summary bank-statements-error" />
+                      <button type="button" class="statement-add-button" data-add-statements aria-describedby="bank-statements-help bank-statements-summary bank-statements-error" hidden>Add PDFs</button>
+                      <small id="bank-statements-help" class="help-text">Select several PDFs at once, or choose files again to add more. Up to 10 files, 80MB per file. All PDFs are saved securely with your application; larger files may not be included in email attachments. Files are optional.</small>
+                      <p id="bank-statements-summary" class="help-text" role="status">No PDFs selected.</p>
+                      <p id="bank-statements-error" class="statement-upload-error" role="alert" hidden></p>
+                      <ul class="statement-file-list" data-statement-files aria-label="Selected bank statement PDFs" hidden></ul>
                     </div>
                   </div>
 
@@ -494,7 +504,7 @@
                            </div>
                            <!-- Draw panel -->
                            <div class="sig-panel sig-panel-draw" data-panel="draw-1">
-                             <canvas class="sig-canvas" id="sig-canvas-1" width="320" height="100"></canvas>
+                             <canvas class="sig-canvas" id="sig-canvas-1" width="320" height="100" role="img" aria-label="Draw Owner 1 signature here. Use Upload instead if you cannot draw a signature."></canvas>
                              <div class="sig-canvas-hint">Draw your signature above</div>
                              <button type="button" class="sig-clear-btn" data-clear="1">Clear</button>
                            </div>
@@ -502,7 +512,7 @@
                            <div class="sig-panel sig-panel-upload" data-panel="upload-1" hidden>
                              <label class="sig-upload-label">
                                <span>Click to upload signature image</span>
-                               <input type="file" class="sig-file-input" data-file-target="1" accept="image/*" />
+                               <input type="file" class="sig-file-input" data-file-target="1" accept="image/*" aria-label="Upload Owner 1 signature image" />
                              </label>
                              <img class="sig-preview" id="sig-preview-1" alt="Signature preview" hidden />
                            </div>
@@ -531,18 +541,19 @@
                              <button type="button" class="sig-tab" data-sig-tab="upload" data-target="2">📁 Upload</button>
                            </div>
                            <div class="sig-panel sig-panel-draw" data-panel="draw-2">
-                             <canvas class="sig-canvas" id="sig-canvas-2" width="320" height="100"></canvas>
+                             <canvas class="sig-canvas" id="sig-canvas-2" width="320" height="100" role="img" aria-label="Draw Owner 2 signature here. Use Upload instead if you cannot draw a signature."></canvas>
                              <div class="sig-canvas-hint">Draw your signature above</div>
                              <button type="button" class="sig-clear-btn" data-clear="2">Clear</button>
                            </div>
                            <div class="sig-panel sig-panel-upload" data-panel="upload-2" hidden>
                              <label class="sig-upload-label">
                                <span>Click to upload signature image</span>
-                               <input type="file" class="sig-file-input" data-file-target="2" accept="image/*" />
+                               <input type="file" class="sig-file-input" data-file-target="2" accept="image/*" aria-label="Upload Owner 2 signature image" />
                              </label>
                              <img class="sig-preview" id="sig-preview-2" alt="Signature preview" hidden />
                            </div>
                            <input type="hidden" name="signature_additional" id="sig-value-2" />
+                           <div class="sig-error" id="sig-error-2" hidden>Please check this signature.</div>
                          </div>
 
                          <label class="field" style="margin-top:12px;">
@@ -571,10 +582,10 @@
             </div><!-- /apply-layout -->
 
             <section class="apply-success-card" data-apply-success hidden tabindex="-1" aria-live="polite">
-              <div class="apply-success-badge">Application submitted</div>
-              <h2>We received your application successfully.</h2>
-              <p class="apply-success-copy">
-                One submission is enough. Our team is reviewing your application now and will follow up soon.
+              <div class="apply-success-badge" data-apply-success-badge>Application received</div>
+              <h2 data-apply-success-heading>Your application has been received.</h2>
+              <p class="apply-success-copy" data-apply-success-copy>
+                One submission is enough. Keep your reference ID for any follow-up.
               </p>
               <div class="apply-success-meta">
                 <div class="apply-success-item">
@@ -641,10 +652,10 @@
     </footer>
 
     <!-- Privacy Policy Modal -->
-    <div class="modal-overlay" id="privacy-modal" data-modal>
-      <div class="modal-container">
+    <div class="modal-overlay" id="privacy-modal" data-modal aria-hidden="true">
+      <div class="modal-container" role="dialog" aria-modal="true" aria-labelledby="privacy-modal-title" tabindex="-1">
         <div class="modal-header">
-          <h2>Privacy Policy</h2>
+          <h2 id="privacy-modal-title">Privacy Policy</h2>
           <button class="modal-close" data-close-modal aria-label="Close modal">&times;</button>
         </div>
         <div class="modal-content">
@@ -687,7 +698,7 @@
     </div>
 
     <!-- Signature Pad library -->
-    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 
     <!-- Signature widget styles -->
     <style>
@@ -731,14 +742,14 @@
       }
       .sig-canvas-hint {
         font-size: 11px;
-        color: #94a3b8;
+        color: #64748b;
         text-align: center;
         margin-top: 4px;
       }
       .sig-clear-btn {
         margin-top: 6px;
         font-size: 12px;
-        color: #ef4444;
+        color: #b91c1c;
         background: none;
         border: none;
         cursor: pointer;
@@ -761,7 +772,7 @@
         transition: background .15s;
       }
       .sig-upload-label:hover { background: #eff6ff; }
-      .sig-file-input { display: none; }
+      .sig-file-input { max-width: 100%; font: inherit; }
       .sig-preview {
         display: block;
         max-height: 80px;
@@ -770,14 +781,38 @@
         border-radius: 4px;
         border: 1px solid #e2e8f0;
       }
-      .sig-error { color: #ef4444; font-size: 12px; margin-top: 4px; }
+      .sig-preview[hidden] { display: none; }
+      .sig-error { color: #b91c1c; font-size: 12px; margin-top: 4px; }
     </style>
 
     <script>
     (function () {
       'use strict';
 
-      const pads = {};  // { '1': SignaturePad, '2': SignaturePad }
+      const pads = {};
+      const signatureState = {
+        '1': { drawing: null, uploaded: '', pending: false, uploadVersion: 0 },
+        '2': { drawing: null, uploaded: '', pending: false, uploadVersion: 0 },
+      };
+
+      function isUploadMode(id) {
+        return !document.querySelector('[data-panel="upload-' + id + '"]').hidden;
+      }
+
+      function setSignatureError(id, message) {
+        const error = document.getElementById('sig-error-' + id);
+        if (error) {
+          error.textContent = message || '';
+          error.hidden = !message;
+        }
+      }
+
+      function syncSignature(id) {
+        const state = signatureState[id];
+        document.getElementById('sig-value-' + id).value = isUploadMode(id)
+          ? state.uploaded
+          : exportPadDataUrl(id);
+      }
 
       function initPad(id) {
         const canvas = document.getElementById('sig-canvas-' + id);
@@ -806,7 +841,16 @@
         window.addEventListener('resize', () => resizeCanvasFor(id));
 
         // On every stroke end, push base64 into hidden input
-        pad.addEventListener('endStroke', () => syncDraw(id));
+        pad.addEventListener('endStroke', () => {
+          const ratio = Math.max(window.devicePixelRatio || 1, 1);
+          signatureState[id].drawing = {
+            data: structuredClone(pad.toData()),
+            width: canvas.width / ratio,
+            height: canvas.height / ratio,
+          };
+          syncSignature(id);
+          setSignatureError(id, '');
+        });
       }
 
       function resizeCanvasFor(id) {
@@ -814,18 +858,34 @@
         const pad = pads[id];
         if (!canvas || !pad || canvas.offsetWidth === 0) return;
 
-        const existingData = pad.isEmpty() ? null : pad.toData();
+        const drawing = signatureState[id].drawing;
         const ratio = Math.max(window.devicePixelRatio || 1, 1);
         const w = canvas.offsetWidth;
         const h = canvas.offsetHeight;
+        if (canvas.width === Math.round(w * ratio) && canvas.height === Math.round(h * ratio)) return;
         canvas.width  = w * ratio;
         canvas.height = h * ratio;
         canvas.getContext('2d').scale(ratio, ratio);
         pad.clear();
-        if (existingData && existingData.length > 0) {
-          pad.fromData(existingData);
-          syncDraw(id);
+        if (drawing && drawing.data.length > 0) {
+          // Render from the original stroke coordinates on every resize. Never
+          // mutate the saved drawing or repeatedly shrink already scaled points.
+          const scale = Math.min(w / drawing.width, h / drawing.height);
+          const offsetX = (w - drawing.width * scale) / 2;
+          const offsetY = (h - drawing.height * scale) / 2;
+          const data = structuredClone(drawing.data);
+          data.forEach(group => {
+            ['minWidth', 'maxWidth', 'dotSize'].forEach(key => {
+              if (typeof group[key] === 'number') group[key] *= scale;
+            });
+            group.points.forEach(point => {
+              point.x = point.x * scale + offsetX;
+              point.y = point.y * scale + offsetY;
+            });
+          });
+          pad.fromData(data);
         }
+        syncSignature(id);
       }
 
       function exportPadDataUrl(id) {
@@ -845,26 +905,27 @@
         return exportCanvas.toDataURL('image/png');
       }
 
-      function syncDraw(id) {
-        const pad = pads[id];
-        if (!pad) return;
-        const hidden = document.getElementById('sig-value-' + id);
-        if (!hidden) return;
-        hidden.value = exportPadDataUrl(id);
+      function syncAllDrawPads() {
+        ['1', '2'].forEach(syncSignature);
       }
 
-      function syncAllDrawPads() {
+      function validateSignatures() {
+        syncAllDrawPads();
+        let valid = true;
         ['1', '2'].forEach(id => {
-          const hidden = document.getElementById('sig-value-' + id);
-          const uploadPanel = document.querySelector('[data-panel="upload-' + id + '"]');
-          const onUploadTab = uploadPanel && !uploadPanel.hidden;
-          if (onUploadTab) return;
-          if (pads[id] && !pads[id].isEmpty()) {
-            syncDraw(id);
-          } else if (hidden) {
-            hidden.value = '';
+          const state = signatureState[id];
+          const value = document.getElementById('sig-value-' + id).value;
+          const message = isUploadMode(id) && state.pending
+            ? 'Please wait for your signature image to finish loading.'
+            : id === '1' && !value ? 'Please provide a signature.' : '';
+          setSignatureError(id, message);
+          if (message) {
+            valid = false;
+            document.querySelector('[data-step-jump="4"]').click();
+            document.getElementById('sig-widget-' + id).scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
         });
+        return valid;
       }
 
       function switchTab(id, mode) {
@@ -878,11 +939,12 @@
           drawPanel.hidden  = false;
           uploadPanel.hidden = true;
           initPad(id);
-          syncDraw(id);
         } else {
           drawPanel.hidden  = true;
           uploadPanel.hidden = false;
         }
+        syncSignature(id);
+        setSignatureError(id, '');
       }
 
       document.addEventListener('click', function (e) {
@@ -897,6 +959,7 @@
         if (clearBtn) {
           const id = clearBtn.dataset.clear;
           if (pads[id]) pads[id].clear();
+          signatureState[id].drawing = null;
           const hidden = document.getElementById('sig-value-' + id);
           if (hidden) hidden.value = '';
           const err = document.getElementById('sig-error-' + id);
@@ -960,7 +1023,7 @@
 
               const bounds = getTrimBounds(ctx, canvas.width, canvas.height);
               if (!bounds) {
-                resolve(canvas.toDataURL('image/png'));
+                reject(new Error('Please upload an image with a visible signature.'));
                 return;
               }
 
@@ -1008,20 +1071,31 @@
         const id      = fileInput.dataset.fileTarget;
         const file    = fileInput.files[0];
         if (!file) return;
-
+        const state = signatureState[id];
+        const version = ++state.uploadVersion;
+        state.pending = true;
+        state.uploaded = '';
+        const preview = document.getElementById('sig-preview-' + id);
+        if (preview) { preview.hidden = true; preview.removeAttribute('src'); }
+        syncSignature(id);
+        setSignatureError(id, '');
         loadImageToDataUrl(file)
           .then(function (dataUrl) {
-            const hidden  = document.getElementById('sig-value-' + id);
-            if (hidden) hidden.value = dataUrl;
+            if (version !== state.uploadVersion) return;
+            state.uploaded = dataUrl;
+            state.pending = false;
+            syncSignature(id);
             const preview = document.getElementById('sig-preview-' + id);
             if (preview) { preview.src = dataUrl; preview.hidden = false; }
           })
-          .catch(function () {
-            const hidden  = document.getElementById('sig-value-' + id);
-            if (hidden) hidden.value = '';
+          .catch(function (error) {
+            if (version !== state.uploadVersion) return;
+            state.uploaded = '';
+            state.pending = false;
+            syncSignature(id);
             const preview = document.getElementById('sig-preview-' + id);
             if (preview) preview.hidden = true;
-            window.alert('Please upload a PNG, JPG, or WebP signature image.');
+            setSignatureError(id, error.message || 'Please upload a PNG, JPG, or WebP signature image.');
           });
       });
 
@@ -1030,32 +1104,43 @@
         const form = e.target.closest('form[data-form="apply"]');
         if (!form) return;
 
-        syncAllDrawPads();
+        if (typeof form.NCAP_VALIDATE_ALL === 'function' && !form.NCAP_VALIDATE_ALL()) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          return;
+        }
 
-        ['1'].forEach(id => {  // Only #1 is required
-
-          const hidden = document.getElementById('sig-value-' + id);
-          const err    = document.getElementById('sig-error-' + id);
-          if (hidden && !hidden.value) {
-            if (err) err.hidden = false;
-            e.preventDefault();
-            // Scroll to signature widget
-            const widget = document.getElementById('sig-widget-' + id);
-            if (widget) widget.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          } else if (err) {
-            err.hidden = true;
-          }
-        });
+        if (!validateSignatures()) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+        }
       }, true);  // capture phase so it runs before main.js
 
       window.NCAP_SYNC_SIGNATURES = syncAllDrawPads;
+      window.NCAP_VALIDATE_SIGNATURES = validateSignatures;
+      document.querySelector('form[data-form="apply"]').addEventListener('reset', () => {
+        ['1', '2'].forEach(id => {
+          const state = signatureState[id];
+          state.drawing = null;
+          state.uploaded = '';
+          state.pending = false;
+          state.uploadVersion += 1;
+          if (pads[id]) pads[id].clear();
+          const preview = document.getElementById('sig-preview-' + id);
+          preview.hidden = true;
+          preview.removeAttribute('src');
+          document.getElementById('sig-value-' + id).value = '';
+          setSignatureError(id, '');
+        });
+      });
 
       // Auto-init both pads when Step 4 becomes visible
       const observer = new MutationObserver(function () {
         ['1', '2'].forEach(id => {
           const canvas = document.getElementById('sig-canvas-' + id);
-          if (canvas && canvas.offsetWidth > 0 && !pads[id]) {
-            initPad(id);
+          if (canvas && canvas.offsetWidth > 0) {
+            if (!pads[id]) initPad(id);
+            else resizeCanvasFor(id);
           }
         });
       });
@@ -1068,8 +1153,8 @@
     })();
     </script>
 
-    <script src="/assets/js/config.js"></script>
-    <script src="/assets/js/main.js"></script>
+    <script defer src="/assets/js/config.js"></script>
+    <script defer src="/assets/js/main.js"></script>
   </body>
 </html>
 

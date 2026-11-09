@@ -3,6 +3,8 @@ server/uploads/
 server/generated-pdfs/
 server/pdf-templates/
 server/test*
+!server/tests/
+!server/tests/**
 node_modules/
 server/node_modules/
 .env
@@ -10,3 +12,5 @@ server/node_modules/
 dist/
 build/
 opencode.json
+output/
+.vercel/

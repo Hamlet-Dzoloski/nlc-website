@@ -5,12 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/png" href="assets/images/favicon.png" />
     <title>No Limit Capital | Business Funding</title>
+    <meta name="description" content="Explore business funding and payment solutions from No Limit Capital. Compare options, contact our team, or start a business funding application." />
+    <link rel="canonical" href="https://www.nolimitcap.net/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="No Limit Capital" />
+    <meta property="og:title" content="No Limit Capital | Business Funding" />
+    <meta property="og:description" content="Explore business funding and payment solutions from No Limit Capital. Compare options, contact our team, or start a business funding application." />
+    <meta property="og:url" content="https://www.nolimitcap.net/" />
+    <meta property="og:image" content="https://www.nolimitcap.net/assets/images/logonlc.png" />
+    <meta property="og:image:alt" content="No Limit Capital emblem" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="No Limit Capital | Business Funding" />
+    <meta name="twitter:description" content="Explore business funding and payment solutions from No Limit Capital. Compare options, contact our team, or start a business funding application." />
+    <meta name="twitter:image" content="https://www.nolimitcap.net/assets/images/logonlc.png" />
+    <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://www.nolimitcap.net/#organization","name":"No Limit Capital","url":"https://www.nolimitcap.net/","logo":"https://www.nolimitcap.net/assets/images/logonlc.png","email":"info@nolimitcap.net"},{"@type":"WebSite","@id":"https://www.nolimitcap.net/#website","name":"No Limit Capital","url":"https://www.nolimitcap.net/","publisher":{"@id":"https://www.nolimitcap.net/#organization"}}]}</script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Playfair+Display:wght@400;700&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&amp;family=Sora:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="assets/css/style.css" />
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     <header class="site-header">
       <div class="container nav">
         <a class="logo" href="index.html">
@@ -34,18 +49,20 @@
       </div>
     </header>
 
-    <main>
+    <main id="main-content" tabindex="-1">
       <section class="hero hero-video">
         <div class="hero-media" aria-hidden="true">
           <video
-            autoplay
             muted
             playsinline
-            preload="metadata"
-            poster="assets/video/skyline-poster.png"
-            data-video-playlist="assets/video/skyline.mp4, assets/video/skyline1.mp4, assets/video/skyline2.mp4"
+            preload="none"
+            poster="assets/video/skyline-poster.webp"
+            data-video-playlist="assets/video/skyline-optimized.mp4"
+            loop
+            tabindex="-1"
           ></video>
         </div>
+        <button type="button" class="video-toggle" data-video-toggle aria-pressed="false" hidden>Pause background video</button>
         <div class="container hero-grid">
           <div class="reveal">
             <div class="eyebrow">Funding built around momentum</div>
@@ -266,8 +283,8 @@
       </div>
     </footer>
 
-    <script src="assets/js/config.js"></script>
-    <script src="assets/js/main.js"></script>
+    <script defer src="assets/js/config.js"></script>
+    <script defer src="assets/js/main.js"></script>
   </body>
 </html>
 

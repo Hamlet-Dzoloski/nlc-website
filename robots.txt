@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /server/
+Disallow: /docs/
+Disallow: /output/
+
+Sitemap: https://www.nolimitcap.net/sitemap.xml

@@ -5,12 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/png" href="assets/images/favicon.png" />
     <title>Products | No Limit Capital</title>
+    <meta name="description" content="Compare No Limit Capital's business funding and payment products, including working capital, term loans, invoice factoring, and card processing." />
+    <link rel="canonical" href="https://www.nolimitcap.net/products.html" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="No Limit Capital" />
+    <meta property="og:title" content="Products | No Limit Capital" />
+    <meta property="og:description" content="Compare No Limit Capital's business funding and payment products, including working capital, term loans, invoice factoring, and card processing." />
+    <meta property="og:url" content="https://www.nolimitcap.net/products.html" />
+    <meta property="og:image" content="https://www.nolimitcap.net/assets/images/logonlc.png" />
+    <meta property="og:image:alt" content="No Limit Capital emblem" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Products | No Limit Capital" />
+    <meta name="twitter:description" content="Compare No Limit Capital's business funding and payment products, including working capital, term loans, invoice factoring, and card processing." />
+    <meta name="twitter:image" content="https://www.nolimitcap.net/assets/images/logonlc.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Playfair+Display:wght@400;700&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&amp;family=Sora:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="assets/css/style.css" />
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     <header class="site-header">
       <div class="container nav">
         <a class="logo" href="index.html">
@@ -34,7 +48,7 @@
       </div>
     </header>
 
-    <main>
+    <main id="main-content" tabindex="-1">
       <section class="page-hero">
         <div class="container">
           <div class="eyebrow">Products</div>
@@ -97,16 +111,16 @@
               <p>Tell us what you need and we will recommend the right product mix.</p>
             </div>
             <form data-submit data-form="product-request">
-              <input type="text" name="name" placeholder="Full name" required />
-              <input type="email" name="email" placeholder="Email" required />
-              <select name="product">
+              <label class="field"><span>Full name</span><input type="text" name="name" autocomplete="name" required /></label>
+              <label class="field"><span>Email address</span><input type="email" name="email" autocomplete="email" required /></label>
+              <label class="field"><span>Product interest</span><select name="product">
                 <option>Payments + Working Capital</option>
                 <option>Expansion Loan</option>
                 <option>Bridge / Hard Money</option>
                 <option>Invoice Factoring</option>
-              </select>
+              </select></label>
               <button class="btn" type="submit">Request Details</button>
-              <div class="form-message"></div>
+              <div class="form-message" role="status" aria-live="polite" hidden></div>
             </form>
           </div>
         </div>
@@ -147,8 +161,8 @@
       </div>
     </footer>
 
-    <script src="assets/js/config.js"></script>
-    <script src="assets/js/main.js"></script>
+    <script defer src="assets/js/config.js"></script>
+    <script defer src="assets/js/main.js"></script>
   </body>
 </html>
 

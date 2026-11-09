@@ -1,0 +1,9 @@
+[
+  {
+    "AllowedOrigins": ["https://nolimitcap.net", "https://www.nolimitcap.net"],
+    "AllowedMethods": ["POST"],
+    "AllowedHeaders": ["*"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 300
+  }
+]

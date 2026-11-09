@@ -5,12 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/png" href="assets/images/favicon.png" />
     <title>Business Funding | No Limit Capital</title>
+    <meta name="description" content="Explore funding options for working capital, expansion, and business cash flow. Tell No Limit Capital about your business and request an estimate." />
+    <link rel="canonical" href="https://www.nolimitcap.net/business.html" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="No Limit Capital" />
+    <meta property="og:title" content="Business Funding | No Limit Capital" />
+    <meta property="og:description" content="Explore funding options for working capital, expansion, and business cash flow. Tell No Limit Capital about your business and request an estimate." />
+    <meta property="og:url" content="https://www.nolimitcap.net/business.html" />
+    <meta property="og:image" content="https://www.nolimitcap.net/assets/images/logonlc.png" />
+    <meta property="og:image:alt" content="No Limit Capital emblem" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Business Funding | No Limit Capital" />
+    <meta name="twitter:description" content="Explore funding options for working capital, expansion, and business cash flow. Tell No Limit Capital about your business and request an estimate." />
+    <meta name="twitter:image" content="https://www.nolimitcap.net/assets/images/logonlc.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Playfair+Display:wght@400;700&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&amp;family=Sora:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="assets/css/style.css" />
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     <header class="site-header">
       <div class="container nav">
         <a class="logo" href="index.html">
@@ -34,7 +48,7 @@
       </div>
     </header>
 
-    <main>
+    <main id="main-content" tabindex="-1">
       <section class="page-hero">
         <div class="container split">
           <div>
@@ -45,7 +59,7 @@
           </div>
           <div class="card">
             <h3>Business snapshot</h3>
-            <p>Use this panel for qualification details, average ticket sizes, or timeline metrics.</p>
+            <p>Compare funding options with your business needs, cash flow, and plans for growth.</p>
             <ul>
               <li>Minimum revenue: $12k/mo</li>
               <li>Funding range: $15k to $2M</li>
@@ -94,17 +108,17 @@
           <div class="form-card">
             <h3>Get a funding estimate</h3>
             <form data-submit data-form="estimate">
-              <input type="text" name="name" placeholder="Full name" required />
-              <input type="email" name="email" placeholder="Email" required />
-              <input type="text" name="revenue" placeholder="Monthly revenue" required />
-              <select name="needs">
+              <label class="field"><span>Full name</span><input type="text" name="name" autocomplete="name" required /></label>
+              <label class="field"><span>Email address</span><input type="email" name="email" autocomplete="email" required /></label>
+              <label class="field"><span>Monthly revenue</span><input type="text" name="revenue" inputmode="decimal" required /></label>
+              <label class="field"><span>Funding need</span><select name="needs">
                 <option>Working Capital</option>
                 <option>Expansion</option>
                 <option>Refinance</option>
                 <option>Payments</option>
-              </select>
+              </select></label>
               <button class="btn" type="submit">Request Estimate</button>
-              <div class="form-message"></div>
+              <div class="form-message" role="status" aria-live="polite" hidden></div>
             </form>
           </div>
         </div>
@@ -145,8 +159,8 @@
       </div>
     </footer>
 
-    <script src="assets/js/config.js"></script>
-    <script src="assets/js/main.js"></script>
+    <script defer src="assets/js/config.js"></script>
+    <script defer src="assets/js/main.js"></script>
   </body>
 </html>
 

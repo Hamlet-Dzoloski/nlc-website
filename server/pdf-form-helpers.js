@@ -14,7 +14,7 @@ function clearFieldHighlights(pdfDoc, form) {
     if (isSignatureField(f.getName())) return;
     f.acroField.getWidgets().forEach((w) => {
       try {
-        const mk = w.getOrCreateMK();
+        const mk = w.getOrCreateAppearanceCharacteristics().dict;
         mk.set(PDFName.of('BG'), white);
         mk.delete(PDFName.of('BC'));
       } catch (_) {}
@@ -51,7 +51,7 @@ function clearSignatureFieldOverlay(tf, { readOnly = true } = {}) {
   tf.acroField.getWidgets().forEach((w) => {
     stripWidgetAppearance(w);
     try {
-      const mk = w.getOrCreateMK();
+      const mk = w.getOrCreateAppearanceCharacteristics().dict;
       mk.delete(PDFName.of('BG'));
       mk.delete(PDFName.of('BC'));
     } catch (_) {}

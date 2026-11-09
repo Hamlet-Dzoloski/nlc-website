@@ -17,10 +17,13 @@ const multer = require('multer');
 const nodemailer = require('nodemailer');
 const { createClient } = require('@supabase/supabase-js');
 const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
-const { SESClient, SendEmailCommand, SendRawEmailCommand } = require('@aws-sdk/client-ses');
+const { SESv2Client, SendEmailCommand } = require('@aws-sdk/client-sesv2');
 const sgMail = require('@sendgrid/mail');
 const { generateApplicationPdfBuffer } = require('./pdf-layout');
 const { generateApplicationPdfFromTemplate, generateFillablePdfFromLayout } = require('./pdf-template-fill');
+const { validateApplicationSignatures } = require('./application-signatures');
+const { createApplicationUploads, validId } = require('./application-uploads');
+const { validateApplication } = require('./application-validation');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const app = express();
@@ -56,7 +59,7 @@ const CLIENT_AUTH_SECRET = process.env.CLIENT_AUTH_SECRET || process.env.JWT_SEC
 const CLIENT_TOKEN_TTL_SECONDS = Math.max(60, Number(process.env.CLIENT_TOKEN_TTL_SECONDS || 60 * 60 * 12));
 const DEFAULT_ADMIN_EMAIL = 'info@nolimitcap.net';
 const DEFAULT_ADMIN_PASSWORD = 'ChangeMeNow123!';
-const MAX_EMAIL_ATTACHMENT_BYTES = Math.max(1, Number(process.env.MAX_EMAIL_ATTACHMENT_MB || 25)) * 1024 * 1024;
+const MAX_EMAIL_ATTACHMENT_BYTES = Math.min(25, Math.max(1, Number(process.env.MAX_EMAIL_ATTACHMENT_MB || 25))) * 1024 * 1024;
 const RATE_LIMIT_WINDOW_MS = Math.max(10 * 1000, Number(process.env.RATE_LIMIT_WINDOW_MS || 10 * 60 * 1000));
 const RATE_LIMIT_MAX_REQUESTS = Math.max(10, Number(process.env.RATE_LIMIT_MAX_REQUESTS || 120));
 const LOGIN_RATE_LIMIT_MAX_REQUESTS = Math.max(3, Number(process.env.LOGIN_RATE_LIMIT_MAX_REQUESTS || 20));
@@ -86,7 +89,7 @@ if (USE_SUPABASE && SUPABASE_URL && SUPABASE_SERVICE_KEY) {
 // AWS S3 Setup
 // ===========================================
 
-const AWS_REGION = process.env.AWS_REGION || 'us-east-1';
+const AWS_REGION = process.env.AWS_REGION || 'us-east-2';
 const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
 const S3_PDF_PREFIX = normalizeS3Prefix(process.env.S3_PDF_PREFIX || 'applications/pdfs/');
 const S3_APPLICATION_RECORD_PREFIX = normalizeS3Prefix(process.env.S3_APPLICATION_RECORD_PREFIX || 'applications/records/');
@@ -100,6 +103,8 @@ let s3Client = null;
 if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY && S3_BUCKET_NAME) {
   s3Client = new S3Client({
     region: AWS_REGION,
+    maxAttempts: 2,
+    requestHandler: { requestTimeout: 15000, connectionTimeout: 5000 },
     credentials: {
       accessKeyId: process.env.AWS_ACCESS_KEY_ID,
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -110,14 +115,21 @@ if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY && S3_BUC
   console.warn('AWS S3 not configured. PDFs will be stored locally.');
 }
 
+const applicationUploads = createApplicationUploads({
+  s3: s3Client, bucket: S3_BUCKET_NAME, prefix: S3_UPLOAD_PREFIX,
+  secret: process.env.UPLOAD_TOKEN_SECRET || process.env.AWS_SECRET_ACCESS_KEY,
+});
+
 // ===========================================
 // AWS SES Setup
 // ===========================================
 
 let sesClient = null;
 if (process.env.AWS_SES_REGION && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
-  sesClient = new SESClient({
+  sesClient = new SESv2Client({
     region: process.env.AWS_SES_REGION || AWS_REGION,
+    maxAttempts: 1,
+    requestHandler: { requestTimeout: 15000, connectionTimeout: 5000 },
     credentials: {
       accessKeyId: process.env.AWS_ACCESS_KEY_ID,
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -171,11 +183,11 @@ const APPLICATION_FIELDS = [
 // ===========================================
 
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '3mb' }));
 app.set('trust proxy', process.env.TRUST_PROXY === 'true' ? 1 : false);
 
 if (process.env.SERVE_STATIC === 'true') {
-  const publicDir = path.join(__dirname, '..');
+  const publicDir = path.join(PROJECT_ROOT, 'dist');
   app.use(express.static(publicDir));
 }
 
@@ -350,6 +362,7 @@ function getRecordDateParts(record) {
 }
 
 function buildRecordKey(prefix, record) {
+  if (prefix === S3_APPLICATION_RECORD_PREFIX) return `${prefix}by-id/${record.id}.json`;
   const { year, month } = getRecordDateParts(record);
   return `${prefix}${year}/${month}/${record.id}.json`;
 }
@@ -568,7 +581,7 @@ async function generateApplicationPdf(record) {
   const fullName = `${record.first_name || ''} ${record.last_name || ''}`.trim()
     .replace(/[^a-zA-Z0-9 ]/g, '')
     .replace(/\s+/g, '_') || 'applicant';
-  const fileName = `${fullName}_funding_request_${safeDate}.pdf`;
+  const fileName = `${fullName}_funding_request_${safeDate}_${record.id || crypto.randomUUID()}.pdf`;
   const filePath = path.join(GENERATED_PDF_DIR, fileName);
 
   let buffer = null;
@@ -578,17 +591,8 @@ async function generateApplicationPdf(record) {
       flatten: false,  // keep fields editable so recipient can review/edit
     });
   } catch (error) {
-    // Sanitize base64 signature images before the pdfkit fallback (pdfkit renders plain text)
-    const sanitized = { ...record };
-    const isImg = v => typeof v === 'string' && v.startsWith('data:image/');
-    if (isImg(sanitized.signature)) {
-      sanitized.signature = `${record.owner_first_name || ''} ${record.owner_last_name || ''}`.trim();
-    }
-    if (isImg(sanitized.signature_additional)) {
-      sanitized.signature_additional = `${record.additional_owner_first_name || ''} ${record.additional_owner_last_name || ''}`.trim();
-    }
     // Fall back to fillable pdfkit layout (also produces a fillable PDF)
-    buffer = await generateFillablePdfFromLayout(sanitized, {
+    buffer = await generateFillablePdfFromLayout(record, {
       companyName: 'No Limit Capital',
       margin: 24,
       logoPath: PDF_HEADER_LOGO_PATH,
@@ -672,7 +676,7 @@ async function uploadLocalFileToS3(file, recordId) {
   }
 }
 
-async function putJsonToS3(key, data) {
+async function putJsonToS3(key, data, options = {}) {
   if (!s3Client || !S3_BUCKET_NAME) {
     return { status: 'skipped', reason: 'S3 not configured' };
   }
@@ -683,6 +687,7 @@ async function putJsonToS3(key, data) {
       Key: key,
       Body: JSON.stringify(data, null, 2),
       ContentType: 'application/json',
+      ...options,
       Metadata: {
         'uploaded-at': new Date().toISOString(),
       },
@@ -697,7 +702,7 @@ async function putJsonToS3(key, data) {
     };
   } catch (error) {
     console.error('S3 JSON save error:', error);
-    return { status: 'failed', error: error.message };
+    return { status: 'failed', error: error.message, code: error.name };
   }
 }
 
@@ -903,13 +908,19 @@ async function buildBankStatementEmailAttachments(files, currentBytes = 0) {
       continue;
     }
 
-    if (!file.path) {
+    if (totalBytes + file.size > MAX_EMAIL_ATTACHMENT_BYTES) {
+      skipped.push({ filename, reason: 'Email attachment size limit reached', s3Key: file.s3Key });
+      continue;
+    }
+    if (!file.path && !file.s3Key) {
       skipped.push({ filename, reason: 'Uploaded file path unavailable' });
       continue;
     }
 
     try {
-      const content = await fs.readFile(file.path);
+      const content = file.s3Key
+        ? Buffer.from(await (await s3Client.send(new GetObjectCommand({ Bucket: S3_BUCKET_NAME, Key: file.s3Key }))).Body.transformToByteArray())
+        : await fs.readFile(file.path);
       if (totalBytes + content.length > MAX_EMAIL_ATTACHMENT_BYTES) {
         skipped.push({ filename, reason: 'Email attachment size limit reached' });
         continue;
@@ -941,34 +952,17 @@ async function sendEmailViaSes(to, subject, textBody, htmlBody, attachments, fro
     const source = from || process.env.SES_FROM_EMAIL || 'info@nolimitcap.net';
     const recipients = normalizeEmailList(to);
     const hasAttachments = Array.isArray(attachments) && attachments.length > 0;
-    const command = hasAttachments
-      ? new SendRawEmailCommand({
-          Source: source,
-          Destinations: recipients,
-          RawMessage: {
-            Data: buildRawEmail({
-              from: source,
-              to: recipients,
-              subject,
-              textBody,
-              htmlBody,
-              attachments,
-            }),
-          },
-        })
-      : new SendEmailCommand({
-          Source: source,
-          Destination: {
-            ToAddresses: recipients,
-          },
-          Message: {
-            Subject: { Data: subject },
-            Body: {
-              Text: { Data: textBody },
-              Html: { Data: htmlBody || textBody },
-            },
-          },
-        });
+    const raw = hasAttachments ? buildRawEmail({ from: source, to: recipients, subject, textBody, htmlBody, attachments }) : null;
+    if (raw && raw.length > 38 * 1024 * 1024) return { status: 'failed', error: 'Encoded email exceeds the safe SES message limit' };
+    const command = new SendEmailCommand({
+      FromEmailAddress: source,
+      Destination: { ToAddresses: recipients },
+      Content: raw ? { Raw: { Data: raw } } : {
+        Simple: { Subject: { Data: subject, Charset: 'UTF-8' }, Body: {
+          Text: { Data: textBody, Charset: 'UTF-8' }, Html: { Data: htmlBody || textBody, Charset: 'UTF-8' },
+        } },
+      },
+    });
 
     const response = await sesClient.send(command);
     return { status: 'sent', messageId: response.MessageId };
@@ -985,6 +979,7 @@ async function sendEmailViaSendGrid(to, subject, textBody, htmlBody, attachments
   if (!process.env.SENDGRID_API_KEY) {
     return { status: 'skipped', reason: 'SendGrid not configured' };
   }
+  if (attachments?.length && buildRawEmail({ from: from || 'info@nolimitcap.net', to, subject, textBody, htmlBody, attachments }).length > 29 * 1024 * 1024) return { status: 'failed', reason: 'Email exceeds the SendGrid message limit' };
 
   try {
     const msg = {
@@ -1019,6 +1014,7 @@ async function sendEmailViaSmtp(to, subject, textBody, htmlBody, attachments, fr
   if (!smtpMailer) {
     return { status: 'skipped', reason: 'SMTP not configured' };
   }
+  if (attachments?.length && buildRawEmail({ from: from || 'info@nolimitcap.net', to, subject, textBody, htmlBody, attachments }).length > 24 * 1024 * 1024) return { status: 'failed', reason: 'Email exceeds the safe SMTP message limit' };
 
   try {
     const info = await smtpMailer.sendMail({
@@ -1073,6 +1069,7 @@ async function emailApplicationPdf(record, pdfData, statementFiles = []) {
     `Application ID: ${record.id}`,
     `Submitted: ${record.createdAt ? new Date(record.createdAt).toLocaleString() : new Date().toLocaleString()}`,
     `Bank statements attached: ${attachedStatementCount}`,
+    ...statementFiles.filter(file => file.s3Key).map(file => `Stored statement: ${file.originalname} — https://s3.console.aws.amazon.com/s3/object/${S3_BUCKET_NAME}?region=${AWS_REGION}&prefix=${encodeURIComponent(file.s3Key)}`),
     skippedStatementCount > 0 ? `Bank statements not attached: ${skippedStatementCount}` : '',
     '',
     'Please see the attached PDFs for complete application details and uploaded bank statements.',
@@ -1109,6 +1106,7 @@ async function emailApplicationPdf(record, pdfData, statementFiles = []) {
         </div>
         <p style="margin-top: 20px; color: #64748b;">Please see the attached PDFs for complete application details and uploaded bank statements.</p>
         ${skippedStatementCount > 0 ? `<p style="margin-top: 8px; color: #b45309;">${skippedStatementCount} uploaded bank statement file(s) were saved with the application but not attached because of email attachment limits.</p>` : ''}
+        ${statementFiles.some(file => file.s3Key) ? `<p>All statement PDFs are also available in private storage (AWS sign-in required):</p><ul>${statementFiles.filter(file => file.s3Key).map(file => `<li><a href="https://s3.console.aws.amazon.com/s3/object/${S3_BUCKET_NAME}?region=${AWS_REGION}&amp;prefix=${encodeURIComponent(file.s3Key)}">${file.originalname.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]))}</a></li>`).join('')}</ul>` : ''}
       </div>
       <div style="background: #1e293b; padding: 15px; text-align: center; color: #94a3b8;">
         <p style="margin: 0;">No Limit Capital | www.nolimitcap.net</p>
@@ -1167,7 +1165,7 @@ async function sendApplicantConfirmationEmail(record) {
     '',
     'Thank you for submitting your funding application with No Limit Capital!',
     '',
-    'We have received your application and our team is reviewing it now.',
+    'We have safely saved your application. Keep your application ID for any follow-up.',
     'You can expect to hear back from us within 24 hours.',
     '',
     'APPLICATION DETAILS:',
@@ -1193,7 +1191,7 @@ async function sendApplicantConfirmationEmail(record) {
 
       <div style="padding: 32px 24px; background: #f8fafc;">
         <p style="color: #1e293b; font-size: 16px; line-height: 1.6; margin: 0 0 16px 0;">Dear <strong>${applicantName}</strong>,</p>
-        <p style="color: #475569; font-size: 15px; line-height: 1.6; margin: 0 0 24px 0;">Thank you for submitting your funding application with No Limit Capital! We have received your application and our team is already reviewing it.</p>
+        <p style="color: #475569; font-size: 15px; line-height: 1.6; margin: 0 0 24px 0;">Thank you for submitting your funding application with No Limit Capital! Your application is safely saved. Keep your application ID for any follow-up.</p>
 
         <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 0 0 24px 0;">
           <h2 style="color: #1e293b; font-size: 16px; margin: 0 0 16px 0; border-bottom: 2px solid #1a56db; padding-bottom: 8px;">Your Application Summary</h2>
@@ -1493,6 +1491,7 @@ async function sendToSwitchboxCrm(record) {
       method: 'POST',
       headers,
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(8000),
     });
 
     if (!response.ok) {
@@ -1611,7 +1610,8 @@ app.post('/api/contact', contactRateLimiter, async (req, res) => {
     return res.json({ ok: true, id: record.id, crmStatus: record.crmStatus, storage: 's3', table: formType });
   }
 
-  // Fall back to local storage
+  // Temporary serverless disk is not a durable submission store.
+  if (IS_SERVERLESS) return res.status(503).json({ ok: false, error: 'We could not save your request. Please try again shortly.' });
   try {
     const contacts = await readJsonArray(CONTACTS_FILE);
     contacts.push(record);
@@ -1623,49 +1623,77 @@ app.post('/api/contact', contactRateLimiter, async (req, res) => {
   return res.json({ ok: true, id: record.id, crmStatus: record.crmStatus, storage: 'local' });
 });
 
-app.post('/api/apply', applyRateLimiter, upload.array('bank_statements', 10), async (req, res) => {
-  const body = req.body || {};
-  const firstName = normalizeValue(body.first_name);
-  const lastName = normalizeValue(body.last_name);
-  const email = normalizeValue(body.email);
-
-  if (!firstName || !lastName || !email) {
-    return res.status(400).json({ ok: false, error: 'first_name, last_name, and email are required' });
+app.post('/api/application/uploads', applyRateLimiter, async (req, res) => {
+  try {
+    const uploads = await applicationUploads.prepare(req.body?.submission_id, req.body?.files);
+    return res.json({ ok: true, uploads });
+  } catch (error) {
+    return res.status(error.status || 503).json({ ok: false, error: error.status === 400 ? error.message : 'Statement uploads are temporarily unavailable. Please try again shortly.' });
   }
+});
 
-  const record = {
-    id: crypto.randomUUID(),
-    createdAt: new Date().toISOString(),
+function applicationResponse(record) {
+  return {
+    ok: true, durable: true, id: record.id, storage: 's3',
+    processingStatus: record.processingStatus,
+    pdfStatus: record.pdfStatus, pdfStorageStatus: record.pdfStorageStatus,
+    emailStatus: record.emailStatus, applicantEmailStatus: record.applicantEmailStatus,
+    pdfRetryRequired: record.pdfRetryRequired || false,
+    bankStatementEmailAttachments: record.bankStatementEmailAttachments || 0,
+    bankStatementEmailAttachmentSkipped: record.bankStatementEmailAttachmentSkipped?.length || 0,
   };
+}
 
+app.post('/api/apply', applyRateLimiter, upload.none(), async (req, res) => {
+  const body = req.body || {};
+  const validation = validateApplication(body);
+  if (validation) return res.status(400).json({ ok: false, ...validation });
+  const signatureError = await validateApplicationSignatures(body);
+  if (signatureError) return res.status(400).json({ ok: false, error: signatureError, fields: ['signature'] });
+  if (!validId(body.submission_id)) return res.status(400).json({ ok: false, error: 'Please refresh the application page and try again.' });
+  if (!s3Client || !S3_BUCKET_NAME) return res.status(503).json({ ok: false, error: 'Application storage is temporarily unavailable. Your application has not been submitted; please try again shortly.' });
+  const record = {
+    id: body.submission_id,
+    createdAt: new Date().toISOString(),
+    processingStatus: 'processing', pdfStatus: 'pending', pdfStorageStatus: 'pending', emailStatus: 'pending',
+    pdfRetryRequired: true, emailRetryRequired: true,
+  };
   APPLICATION_FIELDS.forEach((field) => {
     const value = normalizeValue(body[field]);
-    if (value) {
-      record[field] = value;
-    }
+    if (value) record[field] = value;
   });
-
-  record.name = `${firstName} ${lastName}`.trim();
-  record.email = email;
+  record.application_agreement = 'yes';
+  record.contact_agreement = 'yes';
+  record.name = `${record.first_name} ${record.last_name}`;
   record.company = record.legal_business_name || record.business_dba || '';
-
-  const files = Array.isArray(req.files) ? req.files : [];
-  record.files = [];
-  for (const file of files) {
-    const uploadedFile = await uploadLocalFileToS3(file, record.id);
-    record.files.push({
-      originalName: file.originalname,
-      storedName: file.filename,
-      size: file.size,
-      type: file.mimetype,
-      s3Status: uploadedFile.status,
-      s3Key: uploadedFile.s3Key,
-      s3Url: uploadedFile.s3Url,
-      s3Error: uploadedFile.error || uploadedFile.reason,
-    });
+  record.submissionDigest = crypto.createHash('sha256').update(JSON.stringify(APPLICATION_FIELDS.filter(field => field !== 'form' && field !== 'page').map(field => [field, record[field] || '']).concat([['statements', body.uploaded_statements || []]]))).digest('hex');
+  const recordKey = buildRecordKey(S3_APPLICATION_RECORD_PREFIX, record);
+  let files;
+  try {
+    // A repeated browser request returns its original result without generating
+    // another PDF, sending another email, or overwriting an accepted application.
+    const existing = await getJsonFromS3(recordKey);
+    if (existing) {
+      if (existing.submissionDigest !== record.submissionDigest) return res.status(409).json({ ok: false, error: 'This application was already received. Contact info@nolimitcap.net before submitting changed information.' });
+      return res.json(applicationResponse(existing));
+    }
+    files = await applicationUploads.resolve(record.id, body.uploaded_statements || []);
+    record.files = files.map(file => ({ originalName: file.originalname, size: file.size, type: file.mimetype, s3Status: 'uploaded', s3Key: file.s3Key }));
+    const saved = await putJsonToS3(recordKey, record, { IfNoneMatch: '*' });
+    if (saved.status !== 'saved') {
+      if (saved.code === 'PreconditionFailed' || saved.code === 'ConditionalRequestConflict') {
+        const winner = await getJsonFromS3(recordKey);
+        if (winner?.submissionDigest === record.submissionDigest) return res.json(applicationResponse(winner));
+      }
+      throw new Error('Initial application save failed');
+    }
+    await appendS3Index(getSubmissionIndexKey('applications'), buildSubmissionSummary('applications', record, { s3Key: recordKey, s3Url: buildS3Url(recordKey) }));
+  } catch (error) {
+    return res.status(error.status || 503).json({ ok: false, error: error.status === 400 ? error.message : 'We could not save your application. Your information is still on this page; please try again shortly.' });
   }
 
-  // Generate PDF first so Switchbox (and storage) receive PDF URL and file metadata on the same payload.
+  // The record is durable before any PDF or email work starts. An interrupted
+  // function leaves a visible processing record, not a false temporary success.
   try {
     const pdfData = await generateApplicationPdf(record);
     record.generated_pdf = {
@@ -1674,27 +1702,27 @@ app.post('/api/apply', applyRateLimiter, upload.array('bank_statements', 10), as
     };
     record.generated_pdf_filename = pdfData.fileName;
 
-    // Upload to S3
     const s3Result = await uploadPdfToS3(pdfData.buffer, pdfData.fileName);
+    record.pdfStatus = 'generated';
+    record.pdfStorageStatus = s3Result.status;
     if (s3Result.status === 'uploaded') {
       record.generated_pdf_url = s3Result.s3Url;
       record.generated_pdf_s3_key = s3Result.s3Key;
+      record.pdfRetryRequired = false;
+    } else {
+      record.pdfRetryRequired = true;
+      record.pdfError = s3Result.error || 'PDF upload failed';
     }
-
-    // Send email with PDF
     const mailResult = await emailApplicationPdf(record, pdfData, files);
-    record.pdfStatus = 'generated';
     record.emailStatus = mailResult.status;
-    if (mailResult.messageId) {
-      record.emailMessageId = mailResult.messageId;
-    }
-    if (mailResult.provider) {
-      record.emailProvider = mailResult.provider;
-    }
+    record.emailRetryRequired = mailResult.status !== 'sent';
+    record.emailMessageId = mailResult.messageId;
+    record.emailProvider = mailResult.provider;
   } catch (error) {
     record.pdfStatus = 'failed';
     record.emailStatus = 'failed';
     record.pdfError = error.message;
+    record.pdfRetryRequired = true;
   }
 
   const crmResult = await sendToCrm(record);
@@ -1702,46 +1730,16 @@ app.post('/api/apply', applyRateLimiter, upload.array('bank_statements', 10), as
   if (crmResult.code) record.crmCode = crmResult.code;
   if (crmResult.provider) record.crmProvider = crmResult.provider;
 
-  // Store the full application record in S3. Local JSON is only an emergency fallback.
-  let storageType = 'none';
-  const s3RecordResult = await saveApplicationToS3(record);
-  if (s3RecordResult.status === 'saved') {
-    storageType = 's3';
-    record.generated_record_s3_key = s3RecordResult.s3Key;
-    record.generated_record_url = s3RecordResult.s3Url;
-  } else {
-    // Fall back to local storage
-    try {
-      const applications = await readJsonArray(APPLICATIONS_FILE);
-      applications.push(record);
-      await writeJsonArray(APPLICATIONS_FILE, applications);
-      storageType = 'local';
-    } catch (error) {
-      return res.status(500).json({ ok: false, error: 'Failed to store application' });
-    }
+  const confirmation = await sendApplicantConfirmationEmail(record);
+  record.applicantEmailStatus = confirmation.status;
+  record.processingStatus = record.pdfStatus === 'generated' && record.pdfStorageStatus === 'uploaded' && record.emailStatus === 'sent' ? 'complete' : 'attention_required';
+  record.updatedAt = new Date().toISOString();
+  const finalSave = await saveApplicationToS3(record);
+  if (finalSave.status !== 'saved') {
+    record.processingStatus = 'attention_required';
+    console.error('Application saved initially but final status update needs recovery:', record.id);
   }
-
-  // Send confirmation email to the applicant (fire-and-forget, don't block the response)
-  sendApplicantConfirmationEmail(record)
-    .then((confirmResult) => {
-      if (confirmResult.status === 'sent') {
-        console.log(`Applicant confirmation email sent to ${record.email} via ${confirmResult.provider}`);
-      } else {
-        console.warn(`Applicant confirmation email failed for ${record.email}:`, confirmResult.reason || confirmResult.error || 'unknown');
-      }
-    })
-    .catch((err) => {
-      console.error('Applicant confirmation email error:', err.message);
-    });
-
-  return res.json({
-    ok: true,
-    id: record.id,
-    crmStatus: record.crmStatus,
-    pdfStatus: record.pdfStatus,
-    emailStatus: record.emailStatus,
-    storage: storageType,
-  });
+  return res.json(applicationResponse(record));
 });
 
 // ===========================================

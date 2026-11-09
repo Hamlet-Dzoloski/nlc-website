@@ -27,12 +27,13 @@ npm run dev
   - Sends the submission to **Switchbox AI** when `SWITCHBOX_API_URL` is configured
 
 - `POST /api/apply`
-  - Required: `first_name`, `last_name`, `email`
-  - Accepts bank statement uploads (`bank_statements`)
+  - Validates required form fields, agreements, a signature image, and a stable UUID `submission_id`
+  - Accepts JSON with signed statement-upload receipts (`uploaded_statements`), not PDF file bodies
   - Generates an editable filled PDF in `server/generated-pdfs/`
   - Uploads the PDF, bank statement files, and full application JSON record to AWS S3
   - Sends email with the generated PDF attachment to `info@nolimitcap.net` via SES first
-  - Falls back to `server/data/applications.json` only if S3 record storage fails
+  - Requires a durable S3 save before PDF/email processing; returns 503 rather than claiming success from temporary disk
+  - Repeated requests with the same ID and payload return the existing result without duplicate PDFs or emails
   - Sends the full application payload JSON to configured CRMs (notably **Switchbox AI** when `SWITCHBOX_API_URL` is set)
 
 - `GET /api/client/me`
@@ -42,6 +43,12 @@ npm run dev
   - Returns funding applications visible to logged-in user (Bearer token)
 
 ## AWS S3 + PDF Email Configuration
+
+Build the public website with `npm run build`. Only the allowlisted `dist/`
+directory is served; internal files and submission records are excluded.
+Run `npm run check:frontend` for browser-based accessibility, SEO, responsive,
+keyboard, and background-video checks (Chrome required). See
+[release readiness](docs/go-live-status.md) for verified access limitations.
 
 Set these in `server/.env`:
 
@@ -53,6 +60,11 @@ Set these in `server/.env`:
 AWS S3 is the primary storage for application PDFs and JSON submission records. Supabase is not required for normal submissions; set `USE_SUPABASE=true` only for legacy reads/testing.
 
 SES is the primary email provider for PDF attachments. SendGrid/SMTP remain fallback providers if configured.
+
+The application uses SES v2 and private direct-to-S3 statement uploads (10 PDFs,
+80MB each). See [the application continuity deployment notes](docs/application-continuity.md)
+for the required bucket CORS setting, IAM permissions, limits, and recovery details.
+Run the isolated backend regression suite with `npm test` (Node 20 or newer).
 
 ## Switchbox AI CRM
 

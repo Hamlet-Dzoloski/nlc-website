@@ -55,6 +55,20 @@ overwritten, no application records were queried, and no real email was sent.
   18-file public build pass. The mobile contact page was visually inspected.
 - No production deployment or live application submission has been attempted.
 
+## GitHub handoff
+
+The verified changes were committed and pushed to
+`codex/website-release-readiness`. The worktree is clean. The GitHub integration
+returned 403 `Resource not accessible by integration` when asked to open a draft
+pull request; no pull request was created. That operation was stopped rather
+than retried through another identity.
+
+Review the branch at
+https://github.com/sai-chaitanya-pachipulusu/nlc-website/tree/codex/website-release-readiness
+or open a pull request at
+https://github.com/sai-chaitanya-pachipulusu/nlc-website/compare/main...codex/website-release-readiness?expand=1.
+Do not merge until the release blockers above are resolved.
+
 ## Release sequence after access is restored
 
 1. Run `npm ci`, `npm test`, `npm run check:frontend`, and `npm run build`.
